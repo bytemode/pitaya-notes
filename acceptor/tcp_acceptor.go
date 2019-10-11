@@ -31,11 +31,11 @@ import (
 // TCPAcceptor struct
 type TCPAcceptor struct {
 	addr     string
-	connChan chan net.Conn
-	listener net.Listener //通用的面向流的网络监听接口 Close 关闭监听 Accept 接收网络连接net.Conn   Addr返回监听地址
+	connChan chan net.Conn //通用的面向流的网路连接chan
+	listener net.Listener  //通用的面向流的网络监听接口 Close 关闭监听 Accept 接收网络连接net.Conn   Addr返回监听地址
 	running  bool
-	certFile string
-	keyFile  string
+	certFile string //tls证书
+	keyFile  string //tls秘钥
 }
 
 // NewTCPAcceptor creates a new instance of tcp acceptor
@@ -88,18 +88,18 @@ func (a *TCPAcceptor) ListenAndServe() {
 		return
 	}
 
-	listener, err := net.Listen("tcp", a.addr)
+	listener, err := net.Listen("tcp", a.addr) //tcp监听开启返回net.listener
 	if err != nil {
 		logger.Log.Fatalf("Failed to listen: %s", err.Error())
 	}
 	a.listener = listener
 	a.running = true
-	a.serve()
+	a.serve() //开始服务
 }
 
 // ListenAndServeTLS listens using tls
 func (a *TCPAcceptor) ListenAndServeTLS(cert, key string) {
-	crt, err := tls.LoadX509KeyPair(cert, key)
+	crt, err := tls.LoadX509KeyPair(cert, key) //加载证书和秘钥
 	if err != nil {
 		logger.Log.Fatalf("Failed to listen: %s", err.Error())
 	}
@@ -115,7 +115,7 @@ func (a *TCPAcceptor) ListenAndServeTLS(cert, key string) {
 func (a *TCPAcceptor) serve() {
 	defer a.Stop()
 	for a.running {
-		conn, err := a.listener.Accept()
+		conn, err := a.listener.Accept() //等待返回网络连接net.Conn 并且将conn放入chan
 		if err != nil {
 			logger.Log.Errorf("Failed to accept TCP connection: %s", err.Error())
 			continue

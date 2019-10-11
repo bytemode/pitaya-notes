@@ -74,19 +74,21 @@ func (w *WSAcceptor) GetConnChan() chan net.Conn {
 	return w.connChan
 }
 
+//http.Serve(w.listener, w)启动http时候的第二个参数connHandler 需要实现Handler接口即ServeHTTP函数
 type connHandler struct {
 	upgrader *websocket.Upgrader
 	connChan chan net.Conn
 }
 
+//Hander接口 处理http请求
 func (h *connHandler) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
-	conn, err := h.upgrader.Upgrade(rw, r, nil)
+	conn, err := h.upgrader.Upgrade(rw, r, nil) //升级http为websocket
 	if err != nil {
 		logger.Log.Errorf("Upgrade failure, URI=%s, Error=%s", r.RequestURI, err.Error())
 		return
 	}
 
-	c, err := newWSConn(conn)
+	c, err := newWSConn(conn) //创建websocket conn 并且放入chan
 	if err != nil {
 		logger.Log.Errorf("Failed to create new ws connection: %s", err.Error())
 		return
@@ -105,11 +107,12 @@ func (w *WSAcceptor) ListenAndServe() {
 		return
 	}
 
+	//升级http请求 io操作缓存大小
 	var upgrader = websocket.Upgrader{
 		ReadBufferSize:  1024,
 		WriteBufferSize: 1024,
 		CheckOrigin: func(r *http.Request) bool {
-			return true
+			return true //请求检查函数 防止跨站请求伪造 true则不检查
 		},
 	}
 
@@ -146,6 +149,8 @@ func (w *WSAcceptor) ListenAndServeTLS(cert, key string) {
 func (w *WSAcceptor) serve(upgrader *websocket.Upgrader) {
 	defer w.Stop()
 
+	//启动http服务 connHandler需要实现Handler接口即ServeHTTP函数
+	// w.listener监听接收每一个http连接并且开启一个goroutine来处理连接，goroutine使用connHandler处理连接请求并且回复
 	http.Serve(w.listener, &connHandler{
 		upgrader: upgrader,
 		connChan: w.connChan,
@@ -172,7 +177,7 @@ type wsConn struct {
 func newWSConn(conn *websocket.Conn) (*wsConn, error) {
 	c := &wsConn{conn: conn}
 
-	t, r, err := conn.NextReader()
+	t, r, err := conn.NextReader() //返回连接上的消息类型（二进制或者为本）以及一个打开的reader
 	if err != nil {
 		return nil, err
 	}
