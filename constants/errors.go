@@ -22,6 +22,8 @@ package constants
 
 import "errors"
 
+//errors.New 返回了type errorString struct {s string} 实现了type error interface { Error() string }接口
+
 // Errors that can occur during message handling.
 var (
 	ErrBindingNotFound                = errors.New("binding for this user was not found in etcd")
