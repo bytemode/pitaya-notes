@@ -21,14 +21,14 @@
 package constants
 
 const (
-	_ int32 = iota
-	// StatusStart status
+	_ int32 = iota //iota在const关键字出现时将被重置为0
+	// StatusStart status 0
 	StatusStart
-	// StatusHandshake status
+	// StatusHandshake status 1
 	StatusHandshake
-	// StatusWorking status
+	// StatusWorking status 2
 	StatusWorking
-	// StatusClosed status
+	// StatusClosed status 3
 	StatusClosed
 )
 
