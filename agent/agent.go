@@ -48,12 +48,14 @@ import (
 	opentracing "github.com/opentracing/opentracing-go"
 )
 
+//代理实体负责存储有关客户端连接的信息，它存储会话，编码器，串行器，状态，连接等。它用于与客户端通信以发送消息，并确保连接保持活动状态。
+
 var (
 	// hbd contains the heartbeat packet data
 	hbd []byte
 	// hrd contains the handshake response data
 	hrd  []byte
-	once sync.Once
+	once sync.Once //Mutex和atomic组成的一个,Mutex保证并发atomic计数 并发下函数只会执行一次
 )
 
 const handlerType = "handler"
@@ -67,7 +69,7 @@ type (
 		chSend             chan pendingMessage // push message queue
 		chStopHeartbeat    chan struct{}       // stop heartbeats
 		chStopWrite        chan struct{}       // stop writing messages
-		closeMutex         sync.Mutex
+		closeMutex         sync.Mutex          // Clsoe方法锁
 		conn               net.Conn            // low-level conn fd
 		decoder            codec.PacketDecoder // binary decoder
 		encoder            codec.PacketEncoder // binary encoder
@@ -110,15 +112,15 @@ func NewAgent(
 	a := &Agent{
 		appDieChan:         dieChan,
 		chDie:              make(chan struct{}),
-		chSend:             make(chan pendingMessage, messagesBufferSize),
+		chSend:             make(chan pendingMessage, messagesBufferSize), //发送消息的chan
 		chStopHeartbeat:    make(chan struct{}),
 		chStopWrite:        make(chan struct{}),
 		messagesBufferSize: messagesBufferSize,
 		conn:               conn,
 		decoder:            packetDecoder,
 		encoder:            packetEncoder,
-		heartbeatTimeout:   heartbeatTime,
-		lastAt:             time.Now().Unix(),
+		heartbeatTimeout:   heartbeatTime,     //心跳时间
+		lastAt:             time.Now().Unix(), //上次通信时间
 		serializer:         serializer,
 		state:              constants.StatusStart,
 		messageEncoder:     messageEncoder,
@@ -198,10 +200,10 @@ func (a *Agent) ResponseMID(ctx context.Context, mid uint, v interface{}, isErro
 func (a *Agent) Close() error {
 	a.closeMutex.Lock()
 	defer a.closeMutex.Unlock()
-	if a.GetStatus() == constants.StatusClosed {
+	if a.GetStatus() == constants.StatusClosed { //读取状态判断是否已经关闭
 		return constants.ErrCloseClosedSession
 	}
-	a.SetStatus(constants.StatusClosed)
+	a.SetStatus(constants.StatusClosed) //设置关闭状态
 
 	logger.Log.Debugf("Session closed, ID=%d, UID=%s, IP=%s",
 		a.Session.ID(), a.Session.UID(), a.conn.RemoteAddr())
@@ -211,15 +213,15 @@ func (a *Agent) Close() error {
 	case <-a.chDie:
 		// expect
 	default:
-		close(a.chStopWrite)
-		close(a.chStopHeartbeat)
-		close(a.chDie)
-		onSessionClosed(a.Session)
+		close(a.chStopWrite)       //关闭写
+		close(a.chStopHeartbeat)   //关闭心跳
+		close(a.chDie)             //关闭等待关闭的通道
+		onSessionClosed(a.Session) //通知session agent关闭
 	}
 
 	metrics.ReportNumberOfConnectedClients(a.metricsReporters, session.SessionCount)
 
-	return a.conn.Close()
+	return a.conn.Close() //关闭网络连接
 }
 
 // RemoteAddr implementation for session.NetworkEntity interface
@@ -251,7 +253,7 @@ func (a *Agent) Kick(ctx context.Context) error {
 
 // SetLastAt sets the last at to now
 func (a *Agent) SetLastAt() {
-	atomic.StoreInt64(&a.lastAt, time.Now().Unix())
+	atomic.StoreInt64(&a.lastAt, time.Now().Unix()) //记录的是上一次接收客户端消息的时间戳
 }
 
 // SetStatus sets the agent status
@@ -268,8 +270,10 @@ func (a *Agent) Handle() {
 
 	go a.write()
 	go a.heartbeat()
+
+	//阻塞等待agent关闭 其实是等待Close之后此处才会收到消息
 	select {
-	case <-a.chDie: // agent closed signal
+	case <-a.chDie: // agent closed signal 阻塞 如果close(a.chDie)调用则此处会读取到struct{}
 		return
 	}
 }
@@ -292,23 +296,24 @@ func (a *Agent) IPVersion() string {
 }
 
 func (a *Agent) heartbeat() {
-	ticker := time.NewTicker(a.heartbeatTimeout)
+	ticker := time.NewTicker(a.heartbeatTimeout) //Ticker包含一个chan 间隔时间就向chan发送消息
 
 	defer func() {
-		ticker.Stop()
+		ticker.Stop() //心跳检测停止
 		a.Close()
 	}()
 
 	for {
 		select {
-		case <-ticker.C:
+		case <-ticker.C: //堵塞等待定时间chan
 			deadline := time.Now().Add(-2 * a.heartbeatTimeout).Unix()
+			//上次通信时间+心跳时间 > 当前时间则超时
 			if atomic.LoadInt64(&a.lastAt) < deadline {
 				logger.Log.Debugf("Session heartbeat timeout, LastTime=%d, Deadline=%d", atomic.LoadInt64(&a.lastAt), deadline)
 				return
 			}
 			if _, err := a.conn.Write(hbd); err != nil {
-				return
+				return //发送心跳消息
 			}
 		case <-a.chDie:
 			return
@@ -340,6 +345,7 @@ func (a *Agent) SendHandshakeResponse() error {
 	return err
 }
 
+// 从send管道读取要发送的消息 然后通过
 func (a *Agent) write() {
 	// clean func
 	defer func() {
@@ -349,7 +355,7 @@ func (a *Agent) write() {
 
 	for {
 		select {
-		case data := <-a.chSend:
+		case data := <-a.chSend: //读取管道
 			payload, err := util.SerializeOrRaw(a.serializer, data.payload)
 			if err != nil {
 				logger.Log.Errorf("Failed to serialize response: %s", err.Error())

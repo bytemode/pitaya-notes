@@ -24,6 +24,9 @@ import (
 	"github.com/topfreegames/pitaya/acceptor"
 )
 
+//接收器包装器 包装器可以包装接收器，以执行消息转发之前读取和更改传入的数据
+//创建包装器需要从BaseWrapper继承或者实现Wrapper接口然后使用WithWrappers将其添加到接收器中
+
 // Wrapper has a method that receives an acceptor and the struct
 // that implements must encapsulate it. The main goal is to create
 // a middleware for packets of net.Conn from acceptor.GetConnChan before
@@ -33,6 +36,8 @@ type Wrapper interface {
 }
 
 // WithWrappers walks through wrappers calling Wrapper
+// wrappers ...Wrapper 不确定参数  wapers ... 切片打算传递
+// for k,v:= range  array slice map(随机) string chan(v) for循环中，如果循环变量不是指针，那么每次的变量是同一个，不过值变了
 func WithWrappers(
 	a acceptor.Acceptor,
 	wrappers ...Wrapper,

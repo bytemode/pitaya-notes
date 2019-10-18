@@ -44,7 +44,7 @@ type RateLimiter struct {
 	net.Conn
 	limit        int
 	interval     time.Duration
-	times        list.List
+	times        list.List //双向链表
 	forceDisable bool
 }
 
@@ -62,7 +62,7 @@ func NewRateLimiter(
 		forceDisable: forceDisable,
 	}
 
-	r.times.Init()
+	r.times.Init() //New 或者Init初始化一个空的list
 
 	return r
 }
@@ -93,12 +93,12 @@ func (r *RateLimiter) Read(b []byte) (n int, err error) {
 // in the limit of rate limiting
 func (r *RateLimiter) shouldRateLimit(now time.Time) bool {
 	if r.times.Len() < r.limit {
-		r.times.PushBack(now)
+		r.times.PushBack(now) //尾部放入数据
 		return false
 	}
 
-	front := r.times.Front()
-	if diff := now.Sub(front.Value.(time.Time)); diff < r.interval {
+	front := r.times.Front()                                         //返回链表头
+	if diff := now.Sub(front.Value.(time.Time)); diff < r.interval { //interface.Value.(Type)的用法
 		return true
 	}
 

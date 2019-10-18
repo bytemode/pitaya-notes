@@ -22,7 +22,10 @@ package acceptor
 
 import "net"
 
-// Acceptor type interface
+// Acceptor 前端服务器必须制定一个多个接收器来处理传入的客户端连接，pitaya已经实现TCP和WebSocket的接收器
+// 通过实现Acceptor接口添加新的接收器
+
+// intercace 的实现方法时有一个变量实现了接口中所有方法即实现了接口 interface{}空接口没有任何方法所有类型都实现了空接口
 type Acceptor interface {
 	ListenAndServe()
 	Stop()
