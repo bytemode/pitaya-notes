@@ -22,6 +22,7 @@ package codec
 
 import "github.com/topfreegames/pitaya/conn/packet"
 
+//网络包Packet序列化为[]byte
 // PacketEncoder interface
 type PacketEncoder interface {
 	Encode(typ packet.Type, data []byte) ([]byte, error)

@@ -24,8 +24,8 @@ import "errors"
 
 // Codec constants.
 const (
-	HeadLength    = 4
-	MaxPacketSize = 1 << 24 //16MB
+	HeadLength    = 4       //消息头的长度是4个字节
+	MaxPacketSize = 1 << 24 //16MB body的内容长度是3个byte的大端整数
 )
 
 // ErrPacketSizeExcced is the error used for encode/decode.

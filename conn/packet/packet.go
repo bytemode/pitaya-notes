@@ -24,6 +24,7 @@ import (
 	"fmt"
 )
 
+// Packet 代表网络包 主要是封装面向二进制流的通信协议
 // Packet represents a network packet.
 type Packet struct {
 	Type   Type

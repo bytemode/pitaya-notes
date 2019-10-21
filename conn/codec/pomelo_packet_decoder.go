@@ -26,6 +26,8 @@ import (
 	"github.com/topfreegames/pitaya/conn/packet"
 )
 
+//二进制消息反序列换为Packet包
+
 // PomeloPacketDecoder reads and decodes network data slice following pomelo's protocol
 type PomeloPacketDecoder struct{}
 
@@ -35,23 +37,23 @@ func NewPomeloPacketDecoder() *PomeloPacketDecoder {
 }
 
 func (c *PomeloPacketDecoder) forward(buf *bytes.Buffer) (int, packet.Type, error) {
-	header := buf.Next(HeadLength)
-	typ := header[0]
+	header := buf.Next(HeadLength) //读取缓冲区4byte的内容作为消息头
+	typ := header[0]               //取出第一个字节作为消息的类型
 	if typ < packet.Handshake || typ > packet.Kick {
 		return 0, 0x00, packet.ErrWrongPomeloPacketType
 	}
-	size := bytesToInt(header[1:])
+	size := bytesToInt(header[1:]) //取出2 3 4个字节做为消息体的长度
 
 	// packet length limitation
 	if size > MaxPacketSize {
 		return 0, 0x00, ErrPacketSizeExcced
 	}
-	return size, packet.Type(typ), nil
+	return size, packet.Type(typ), nil //返回header信息
 }
 
 // Decode decode the network bytes slice to packet.Packet(s)
 func (c *PomeloPacketDecoder) Decode(data []byte) ([]*packet.Packet, error) {
-	buf := bytes.NewBuffer(nil)
+	buf := bytes.NewBuffer(nil) //创建一个新的byte缓冲区
 	buf.Write(data)
 
 	var (
@@ -59,26 +61,26 @@ func (c *PomeloPacketDecoder) Decode(data []byte) ([]*packet.Packet, error) {
 		err     error
 	)
 	// check length
-	if buf.Len() < HeadLength {
+	if buf.Len() < HeadLength { //如果进制的数据没有完整的消息头的长度则消息不完整
 		return nil, nil
 	}
 
 	// first time
-	size, typ, err := c.forward(buf)
+	size, typ, err := c.forward(buf) //读取消息头和消息类型
 	if err != nil {
 		return nil, err
 	}
 
-	for size <= buf.Len() {
-		p := &packet.Packet{Type: typ, Length: size, Data: buf.Next(size)}
-		packets = append(packets, p)
+	for size <= buf.Len() { //二进制中的数据长度够消息体内容的长度 也就是可以满足本条消息的消息体长度
+		p := &packet.Packet{Type: typ, Length: size, Data: buf.Next(size)} //读取消息体构建一个Packet
+		packets = append(packets, p)                                       //Packet放入[]*packet.Packet
 
 		// more packet
 		if buf.Len() < HeadLength {
 			break
 		}
 
-		size, typ, err = c.forward(buf)
+		size, typ, err = c.forward(buf) //接续读取下一个消息头的信息
 		if err != nil {
 			return nil, err
 		}
