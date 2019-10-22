@@ -62,11 +62,14 @@ func (b *Binary) GetExitChannel() chan struct{} {
 
 // Init initializes the binary
 func (b *Binary) Init() error {
-	b.cmd = exec.Command(b.binPath, b.args...)
-	stdout, _ := b.cmd.StdoutPipe()
-	stdOutScanner := bufio.NewScanner(stdout)
-	stderr, _ := b.cmd.StderrPipe()
+	//exec 用来执行外部命令
+	b.cmd = exec.Command(b.binPath, b.args...) //跟进执行文件名和参数返回一个cmd
+	stdout, _ := b.cmd.StdoutPipe()            //返回一个管道，该管道会在Cmd中的命令被启动后连接到其标准输入
+	stdOutScanner := bufio.NewScanner(stdout)  //带缓冲的io
+	stderr, _ := b.cmd.StderrPipe()            //返回一个管道，该管道会在Cmd中的命令被启动后连接到其标准错误
 	stdErrScanner := bufio.NewScanner(stderr)
+
+	//循环读取标准输出和标准错误进行日志操作
 	go func() {
 		for stdOutScanner.Scan() {
 			logger.Log.Info(stdOutScanner.Text())
@@ -77,26 +80,28 @@ func (b *Binary) Init() error {
 			logger.Log.Error(stdErrScanner.Text())
 		}
 	}()
-	err := b.cmd.Start()
+	err := b.cmd.Start() ///执行Cmd中包含的命令，该方法立即返回，并不等待命令执行完成
 	go func() {
-		b.cmd.Wait()
-		close(b.exitCh)
+		b.cmd.Wait()    //该方法会阻塞直到Cmd中的命令执行完成，但该命令必须是被Start方法开始执行的
+		close(b.exitCh) //执行完毕后关闭exitCh chan
 	}()
 	return err
 }
 
 // Shutdown shutdowns the binary module
 func (b *Binary) Shutdown() error {
+	//给cmd执行程序发送结束信号
 	err := b.cmd.Process.Signal(syscall.SIGTERM)
 	if err != nil {
 		return err
 	}
+	//SIGTERM
 	timeout := time.After(b.gracefulShutdownInterval)
 	select {
 	case <-b.exitCh:
 		return nil
 	case <-timeout:
-		b.cmd.Process.Kill()
+		b.cmd.Process.Kill() //sigterm超时则强制杀进程
 		return constants.ErrTimeoutTerminatingBinaryModule
 	}
 }

@@ -39,7 +39,7 @@ var (
 	// Manager manager for all Timers
 	Manager = &struct {
 		incrementID    int64      // auto increment id
-		timers         sync.Map   // all Timers
+		timers         sync.Map   // all Timers 并发安全的map
 		ChClosingTimer chan int64 // timer for closing
 		ChCreatedTimer chan *Timer
 	}{}
@@ -78,7 +78,7 @@ type (
 
 func init() {
 	// since this runs on init it is better to leave the value hardcoded here
-	timerBacklog = 1 << 8
+	timerBacklog = 1 << 8 //256
 	Manager.ChClosingTimer = make(chan int64, timerBacklog)
 	Manager.ChCreatedTimer = make(chan *Timer, timerBacklog)
 }
@@ -95,6 +95,7 @@ func RemoveTimer(id int64) {
 
 // NewTimer creates a cron job
 func NewTimer(fn Func, interval time.Duration, counter int) *Timer {
+	//atomic原子操作
 	id := atomic.AddInt64(&Manager.incrementID, 1)
 	t := &Timer{
 		ID:       id,
