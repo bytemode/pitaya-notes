@@ -103,6 +103,7 @@ func SliceContainsString(slice []string, str string) bool {
 
 // SerializeOrRaw serializes the interface if its not an array of bytes already
 func SerializeOrRaw(serializer serialize.Serializer, v interface{}) ([]byte, error) {
+	//v如果是[]byte则直接返回不需要使用 Serializer进行序列化
 	if data, ok := v.([]byte); ok {
 		return data, nil
 	}

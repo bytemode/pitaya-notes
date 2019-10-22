@@ -127,7 +127,7 @@ func NewAgent(
 		metricsReporters:   metricsReporters,
 	}
 
-	// binding session
+	// binding session   agent 和session相互关联
 	s := session.New(a, true)
 	metrics.ReportNumberOfConnectedClients(metricsReporters, session.SessionCount)
 	a.Session = s
@@ -141,7 +141,7 @@ func (a *Agent) send(m pendingMessage) (err error) {
 		}
 	}()
 	a.reportChannelSize()
-	a.chSend <- m
+	a.chSend <- m //发送消息都写入chSend chan
 	return
 }
 
@@ -356,6 +356,7 @@ func (a *Agent) write() {
 	for {
 		select {
 		case data := <-a.chSend: //读取管道
+			//使用Serializer序列化
 			payload, err := util.SerializeOrRaw(a.serializer, data.payload)
 			if err != nil {
 				logger.Log.Errorf("Failed to serialize response: %s", err.Error())
@@ -370,7 +371,7 @@ func (a *Agent) write() {
 				}
 			}
 
-			// construct message and encode
+			// construct message and encode flag(preverse| msg type |route ) + message id + route + data
 			m := &message.Message{
 				Type:  data.typ,
 				Data:  payload,
@@ -378,6 +379,7 @@ func (a *Agent) write() {
 				ID:    data.mid,
 				Err:   data.err,
 			}
+			//封装消息头处理路由消息id 压缩消息体
 			em, err := a.messageEncoder.Encode(m)
 			if err != nil {
 				tracing.FinishSpan(data.ctx, err)
@@ -388,7 +390,7 @@ func (a *Agent) write() {
 				break
 			}
 
-			// packet encode
+			// packet encode 将message序列化的二进制封装使用packet进行序列化 packet.ytpe(1btyte)+body lenght(3byte)+bodydata
 			p, err := a.encoder.Encode(packet.Data, em)
 			if err != nil {
 				tracing.FinishSpan(data.ctx, err)
@@ -447,6 +449,7 @@ func (a *Agent) AnswerWithError(ctx context.Context, mid uint, err error) {
 }
 
 func hbdEncode(heartbeatTimeout time.Duration, packetEncoder codec.PacketEncoder, dataCompression bool, serializerName string) {
+	//握手的内容为utf-8编码的json字符串
 	hData := map[string]interface{}{
 		"code": 200,
 		"sys": map[string]interface{}{
@@ -471,11 +474,13 @@ func hbdEncode(heartbeatTimeout time.Duration, packetEncoder codec.PacketEncoder
 		}
 	}
 
+	//hrd 握手的相应消息
 	hrd, err = packetEncoder.Encode(packet.Handshake, data)
 	if err != nil {
 		panic(err)
 	}
 
+	//心跳包 length字段为0 body为空 hbd为encode之后的心跳包可以发送给conn的二进制数据
 	hbd, err = packetEncoder.Encode(packet.Heartbeat, nil)
 	if err != nil {
 		panic(err)
