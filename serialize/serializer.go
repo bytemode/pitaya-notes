@@ -20,6 +20,8 @@
 
 package serialize
 
+//序列换和反序列换的接口 interface 和 []byte的转化
+
 type (
 
 	// Marshaler represents a marshal interface
