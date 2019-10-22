@@ -31,11 +31,11 @@ import (
 type (
 	//Handler represents a message.Message's handler's meta information.
 	Handler struct {
-		Receiver    reflect.Value  // receiver of method
+		Receiver    reflect.Value  // receiver of method 反射获变量的值  reflect.ValueOf(xxx)
 		Method      reflect.Method // method stub
-		Type        reflect.Type   // low-level type of method
+		Type        reflect.Type   // low-level type of method 反射变量的类型 reflect.TypeOf(xxx)
 		IsRawArg    bool           // whether the data need to serialize
-		MessageType message.Type   // handler allowed message type (either request or notify)
+		MessageType message.Type   // handler allowed message type (either request or notify) server接收的请求的客户端消息类型
 	}
 
 	//Remote represents remote's meta information.

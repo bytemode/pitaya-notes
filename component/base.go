@@ -18,8 +18,9 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-package component
+package co
 
+//实现一个默认组件
 // Base implements a default component for Component.
 type Base struct{}
 
