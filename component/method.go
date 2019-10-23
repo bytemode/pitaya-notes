@@ -37,8 +37,9 @@ var (
 	typeOfProtoMsg = reflect.TypeOf(new(proto.Message)).Elem()
 )
 
+//通过首字母大写判断导出情况
 func isExported(name string) bool {
-	w, _ := utf8.DecodeRuneInString(name)
+	w, _ := utf8.DecodeRuneInString(name) //返回utf8编码的字符串
 	return unicode.IsUpper(w)
 }
 

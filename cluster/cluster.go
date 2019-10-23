@@ -86,19 +86,19 @@ func buildRequest(
 	thisServer *Server,
 ) (protos.Request, error) {
 	req := protos.Request{
-		Type: rpcType,
+		Type: rpcType, //rpc类型 user sys
 		Msg: &protos.Msg{
 			Route: route.String(),
 			Data:  msg.Data,
-		},
+		}, //消息路由+内容
 	}
 	ctx, err := tracing.InjectSpan(ctx)
 	if err != nil {
 		logger.Log.Errorf("failed to inject span: %s", err)
 	}
-	ctx = pcontext.AddToPropagateCtx(ctx, constants.PeerIDKey, thisServer.ID)
-	ctx = pcontext.AddToPropagateCtx(ctx, constants.PeerServiceKey, thisServer.Type)
-	req.Metadata, err = pcontext.Encode(ctx)
+	ctx = pcontext.AddToPropagateCtx(ctx, constants.PeerIDKey, thisServer.ID)        //context.WithValue peer.id
+	ctx = pcontext.AddToPropagateCtx(ctx, constants.PeerServiceKey, thisServer.Type) //context.WithValue peer.service
+	req.Metadata, err = pcontext.Encode(ctx)                                         //取出ctx中的Value Map 进行序列化
 	if err != nil {
 		return req, err
 	}
@@ -106,6 +106,7 @@ func buildRequest(
 		req.FrontendID = thisServer.ID
 	}
 
+	//客户端请求和通知 写入消息类型
 	switch msg.Type {
 	case message.Request:
 		req.Msg.Type = protos.MsgType_MsgRequest
@@ -113,6 +114,7 @@ func buildRequest(
 		req.Msg.Type = protos.MsgType_MsgNotify
 	}
 
+	//处理程序的消息转发到合适服务器使用的rpc就是sys rpc（request类型的消息）添加上消息id
 	if rpcType == protos.RPCType_Sys {
 		mid := uint(0)
 		if msg.Type == message.Request {

@@ -27,6 +27,7 @@ import (
 	"github.com/spf13/viper"
 )
 
+//使用viper作为配置 并且做封装
 // Config is a wrapper around a viper config
 type Config struct {
 	config *viper.Viper
@@ -41,8 +42,8 @@ func NewConfig(cfgs ...*viper.Viper) *Config {
 		cfg = viper.New()
 	}
 
-	cfg.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
-	cfg.AutomaticEnv()
+	cfg.SetEnvKeyReplacer(strings.NewReplacer(".", "_")) //替换环境变量中的一些key中的符号
+	cfg.AutomaticEnv()                                   //获取所有的环境变量
 	c := &Config{config: cfg}
 	c.fillDefaultValues()
 	return c

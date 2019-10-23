@@ -21,8 +21,8 @@ const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
 type RPCType int32
 
 const (
-	RPCType_Sys  RPCType = 0
-	RPCType_User RPCType = 1
+	RPCType_Sys  RPCType = 0 //服务器在将处理程序消息转发到适当的服务器类型时由服务器完成的RPC
+	RPCType_User RPCType = 1 //当应用程序主动调用另一台服务器中的远程方法时，便完成了用户RPC。呼叫可以指定目标服务器的ID，也可以让Pitaya根据路由逻辑选择一个
 )
 
 var RPCType_name = map[int32]string{

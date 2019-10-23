@@ -29,7 +29,7 @@ import (
 
 // Server struct
 type Server struct {
-	ID       string            `json:"id"`
+	ID       string            `json:"id"` //成员变量标签 序列化作为键值
 	Type     string            `json:"type"`
 	Metadata map[string]string `json:"metadata"`
 	Frontend bool              `json:"frontend"`
@@ -39,7 +39,7 @@ type Server struct {
 // NewServer ctor
 func NewServer(id, serverType string, frontend bool, metadata ...map[string]string) *Server {
 	d := make(map[string]string)
-	h, err := os.Hostname()
+	h, err := os.Hostname() //获取主机名
 	if err != nil {
 		logger.Log.Errorf("failed to get hostname: %s", err.Error())
 	}
