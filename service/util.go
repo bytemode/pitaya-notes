@@ -188,6 +188,8 @@ func processHandlerMessage(
 
 	//利用反射进行handler调用
 	logger.Debugf("SID=%d, Data=%s", session.ID(), data)
+
+	//构建调用参数
 	args := []reflect.Value{h.Receiver, reflect.ValueOf(ctx)}
 	if arg != nil {
 		args = append(args, reflect.ValueOf(arg))
