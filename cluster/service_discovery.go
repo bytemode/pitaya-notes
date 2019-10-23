@@ -22,6 +22,8 @@ package cluster
 
 import "github.com/topfreegames/pitaya/interfaces"
 
+//服务发现客户端接口 主要是获取服务器 同步服务器 和添加删除服务器的监听
+
 // ServiceDiscovery is the interface for a service discovery client
 type ServiceDiscovery interface {
 	GetServersByType(serverType string) (map[string]*Server, error)

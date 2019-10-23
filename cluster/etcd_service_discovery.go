@@ -37,13 +37,13 @@ import (
 )
 
 type etcdServiceDiscovery struct {
-	cli                  *clientv3.Client
-	config               *config.Config
-	syncServersInterval  time.Duration
-	heartbeatTTL         time.Duration
+	cli                  *clientv3.Client //etcd v3客户端
+	config               *config.Config   //viper配置
+	syncServersInterval  time.Duration    //servers 同步时间间隔
+	heartbeatTTL         time.Duration    //心跳间隔
 	logHeartbeat         bool
-	lastHeartbeatTime    time.Time
-	leaseID              clientv3.LeaseID
+	lastHeartbeatTime    time.Time        //上次心跳
+	leaseID              clientv3.LeaseID //租约id
 	mapByTypeLock        sync.RWMutex
 	serverMapByType      map[string]map[string]*Server
 	serverMapByID        sync.Map
@@ -93,17 +93,17 @@ func NewEtcdServiceDiscovery(
 }
 
 func (sd *etcdServiceDiscovery) configure() {
-	sd.etcdEndpoints = sd.config.GetStringSlice("pitaya.cluster.sd.etcd.endpoints")
-	sd.etcdDialTimeout = sd.config.GetDuration("pitaya.cluster.sd.etcd.dialtimeout")
-	sd.etcdPrefix = sd.config.GetString("pitaya.cluster.sd.etcd.prefix")
-	sd.heartbeatTTL = sd.config.GetDuration("pitaya.cluster.sd.etcd.heartbeat.ttl")
-	sd.logHeartbeat = sd.config.GetBool("pitaya.cluster.sd.etcd.heartbeat.log")
-	sd.syncServersInterval = sd.config.GetDuration("pitaya.cluster.sd.etcd.syncservers.interval")
-	sd.revokeTimeout = sd.config.GetDuration("pitaya.cluster.sd.etcd.revoke.timeout")
-	sd.grantLeaseTimeout = sd.config.GetDuration("pitaya.cluster.sd.etcd.grantlease.timeout")
-	sd.grantLeaseMaxRetries = sd.config.GetInt("pitaya.cluster.sd.etcd.grantlease.maxretries")
-	sd.grantLeaseInterval = sd.config.GetDuration("pitaya.cluster.sd.etcd.grantlease.retryinterval")
-	sd.shutdownDelay = sd.config.GetDuration("pitaya.cluster.sd.etcd.shutdown.delay")
+	sd.etcdEndpoints = sd.config.GetStringSlice("pitaya.cluster.sd.etcd.endpoints")                  //逗号分隔的etcd端点列表
+	sd.etcdDialTimeout = sd.config.GetDuration("pitaya.cluster.sd.etcd.dialtimeout")                 //拨号超时值传递给服务发现etcd客户端
+	sd.etcdPrefix = sd.config.GetString("pitaya.cluster.sd.etcd.prefix")                             //避免不同的pitaya冲突 服务器必须具有相同的前缀才能相互看到
+	sd.heartbeatTTL = sd.config.GetDuration("pitaya.cluster.sd.etcd.heartbeat.ttl")                  //etcd租约的心跳间隔
+	sd.logHeartbeat = sd.config.GetBool("pitaya.cluster.sd.etcd.heartbeat.log")                      //是否应在调试模式下记录etcd心跳
+	sd.syncServersInterval = sd.config.GetDuration("pitaya.cluster.sd.etcd.syncservers.interval")    //服务发现模块执行的服务器同步之间的间隔
+	sd.revokeTimeout = sd.config.GetDuration("pitaya.cluster.sd.etcd.revoke.timeout")                //etcd的撤销功能超时
+	sd.grantLeaseTimeout = sd.config.GetDuration("pitaya.cluster.sd.etcd.grantlease.timeout")        //etcd租期超时
+	sd.grantLeaseMaxRetries = sd.config.GetInt("pitaya.cluster.sd.etcd.grantlease.maxretries")       //etcd授予租约的最大尝试次数
+	sd.grantLeaseInterval = sd.config.GetDuration("pitaya.cluster.sd.etcd.grantlease.retryinterval") //每次授予租约尝试之间的间隔
+	sd.shutdownDelay = sd.config.GetDuration("pitaya.cluster.sd.etcd.shutdown.delay")                //从服务发现注销后等待关闭的时间
 }
 
 func (sd *etcdServiceDiscovery) watchLeaseChan(c <-chan *clientv3.LeaseKeepAliveResponse) {
