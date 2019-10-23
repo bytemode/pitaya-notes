@@ -50,7 +50,7 @@ func NewRoute(server, service, method string) *Route {
 // String transforms the route into a string
 func (r *Route) String() string {
 	if r.SvType != "" {
-		return fmt.Sprintf("%s.%s.%s", r.SvType, r.Service, r.Method)
+		return fmt.Sprintf("%s.%s.%s", r.SvType, r.Service, r.Method) //服务器 服务 方法
 	}
 	return r.Short()
 }

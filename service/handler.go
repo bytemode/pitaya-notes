@@ -122,11 +122,11 @@ func (h *HandlerService) Dispatch(thread int) {
 	for {
 		// Calls to remote servers block calls to local server
 		select {
-		case lm := <-h.chLocalProcess:
+		case lm := <-h.chLocalProcess: //处理本地服务message
 			metrics.ReportMessageProcessDelayFromCtx(lm.ctx, h.metricsReporters, "local")
 			h.localProcess(lm.ctx, lm.agent, lm.route, lm.msg)
 
-		case rm := <-h.chRemoteProcess:
+		case rm := <-h.chRemoteProcess: //处理远端服务message
 			metrics.ReportMessageProcessDelayFromCtx(rm.ctx, h.metricsReporters, "remote")
 			h.remoteService.remoteProcess(rm.ctx, nil, rm.agent, rm.route, rm.msg)
 
@@ -164,7 +164,7 @@ func (h *HandlerService) Register(comp component.Component, opts []component.Opt
 
 // Handle handles messages from a conn
 func (h *HandlerService) Handle(conn net.Conn) {
-	// create a client agent and startup write goroutine
+	// create a client agent and startup write goroutine  agent用来处理心跳和给客户端发送消息
 	a := agent.NewAgent(conn, h.decoder, h.encoder, h.serializer, h.heartbeatTimeout, h.messagesBufferSize, h.appDieChan, h.messageEncoder, h.metricsReporters)
 
 	// startup agent goroutine
@@ -178,10 +178,10 @@ func (h *HandlerService) Handle(conn net.Conn) {
 		logger.Log.Debugf("Session read goroutine exit, SessionID=%d, UID=%d", a.Session.ID(), a.Session.UID())
 	}()
 
-	// read loop
+	// read loop 循环读取网络连接上的消息
 	buf := make([]byte, 2048)
 	for {
-		n, err := conn.Read(buf)
+		n, err := conn.Read(buf) //读取数据放入buf返回字节数 超过buf会自动扩容
 		if err != nil {
 			logger.Log.Debugf("Read message error: '%s', session will be closed immediately", err.Error())
 			return
@@ -189,19 +189,21 @@ func (h *HandlerService) Handle(conn net.Conn) {
 
 		logger.Log.Debug("Received data on connection")
 
+		//从buf中取出n字节使用codec.Decoder做packet层的解析会根据 1byte+3byte+data的个数读取数据返回一个packet切片，此处为拆包
 		// (warning): decoder uses slice for performance, packet data should be copied before next Decode
-		packets, err := h.decoder.Decode(buf[:n])
+		packets, err := h.decoder.Decode(buf[:n]) //packet解码得到多个packet type type 1btyte+ body length 3byte + body data
 		if err != nil {
 			logger.Log.Errorf("Failed to decode message: %s", err.Error())
 			return
 		}
 
+		//如果数据包不够一个大小则继续read网络数据
 		if len(packets) < 1 {
 			logger.Log.Warnf("Read no packets, data: %v", buf[:n])
 			continue
 		}
 
-		// process all packet
+		// process all packet 处理所有packet 根据不同的packet.type进行处理
 		for i := range packets {
 			if err := h.processPacket(a, packets[i]); err != nil {
 				logger.Log.Errorf("Failed to process packet: %s", err.Error())
@@ -213,9 +215,9 @@ func (h *HandlerService) Handle(conn net.Conn) {
 
 func (h *HandlerService) processPacket(a *agent.Agent, p *packet.Packet) error {
 	switch p.Type {
-	case packet.Handshake:
+	case packet.Handshake: // 收到握手请求
 		logger.Log.Debug("Received handshake packet")
-		if err := a.SendHandshakeResponse(); err != nil {
+		if err := a.SendHandshakeResponse(); err != nil { //回复握手相应协议
 			logger.Log.Errorf("Error sending handshake response: %s", err.Error())
 			return err
 		}
@@ -223,14 +225,15 @@ func (h *HandlerService) processPacket(a *agent.Agent, p *packet.Packet) error {
 
 		// Parse the json sent with the handshake by the client
 		handshakeData := &session.HandshakeData{}
-		err := json.Unmarshal(p.Data, handshakeData)
+		err := json.Unmarshal(p.Data, handshakeData) //packet.data反序列化为 session.HandshakeData
 		if err != nil {
 			a.SetStatus(constants.StatusClosed)
 			return fmt.Errorf("Invalid handshake data. Id=%d", a.Session.ID())
 		}
 
+		//session关联handshakedata
 		a.Session.SetHandshakeData(handshakeData)
-		a.SetStatus(constants.StatusHandshake)
+		a.SetStatus(constants.StatusHandshake) //agent进入握手状态
 		err = a.Session.Set(constants.IPVersionKey, a.IPVersion())
 		if err != nil {
 			logger.Log.Warnf("failed to save ip version on session: %q\n", err)
@@ -238,24 +241,26 @@ func (h *HandlerService) processPacket(a *agent.Agent, p *packet.Packet) error {
 
 		logger.Log.Debug("Successfully saved handshake data")
 
-	case packet.HandshakeAck:
+	case packet.HandshakeAck: //回复客户端握手请求之后，客户端会回复act agent进入 work
 		a.SetStatus(constants.StatusWorking)
 		logger.Log.Debugf("Receive handshake ACK Id=%d, Remote=%s", a.Session.ID(), a.RemoteAddr())
 
-	case packet.Data:
+	case packet.Data: //收到的是数据包 request或者notify类型
 		if a.GetStatus() < constants.StatusWorking {
 			return fmt.Errorf("receive data on socket which is not yet ACK, session will be closed immediately, remote=%s",
 				a.RemoteAddr().String())
 		}
 
+		//将packet的data部分交给message解码 获取到 flag(preserve tyep flag)+id+route+data
+		///flag中可以获取到type（request或者notify）和route压缩和gzip压缩 地根据此字段读取出routestr 之后的就是纯数据部分
 		msg, err := message.Decode(p.Data)
 		if err != nil {
 			return err
 		}
-		h.processMessage(a, msg)
+		h.processMessage(a, msg) //处理message
 
 	case packet.Heartbeat:
-		// expected
+		// expected 心跳
 	}
 
 	a.SetLastAt()
@@ -264,6 +269,7 @@ func (h *HandlerService) processPacket(a *agent.Agent, p *packet.Packet) error {
 
 func (h *HandlerService) processMessage(a *agent.Agent, msg *message.Message) {
 	requestID := uuid.New()
+	//ctx中记录start time \route\requestud
 	ctx := pcontext.AddToPropagateCtx(context.Background(), constants.StartTimeKey, time.Now().UnixNano())
 	ctx = pcontext.AddToPropagateCtx(ctx, constants.RouteKey, msg.Route)
 	ctx = pcontext.AddToPropagateCtx(ctx, constants.RequestIDKey, requestID.String())
@@ -277,6 +283,7 @@ func (h *HandlerService) processMessage(a *agent.Agent, msg *message.Message) {
 	ctx = tracing.StartSpan(ctx, msg.Route, tags)
 	ctx = context.WithValue(ctx, constants.SessionCtxKey, a.Session)
 
+	//解析route变为svtype service method
 	r, err := route.Decode(msg.Route)
 	if err != nil {
 		logger.Log.Errorf("Failed to decode route: %s", err.Error())
@@ -288,15 +295,19 @@ func (h *HandlerService) processMessage(a *agent.Agent, msg *message.Message) {
 		r.SvType = h.server.Type
 	}
 
+	//构建未处理消息
 	message := unhandledMessage{
 		ctx:   ctx,
 		agent: a,
 		route: r,
 		msg:   msg,
 	}
+
+	//本地消息则交由本地服务器处理 写入本地process chan
 	if r.SvType == h.server.Type {
 		h.chLocalProcess <- message
 	} else {
+		//如果不是本地服务器则交由远程服务器处理 发送到远程管道
 		if h.remoteService != nil {
 			h.chRemoteProcess <- message
 		} else {
@@ -305,22 +316,24 @@ func (h *HandlerService) processMessage(a *agent.Agent, msg *message.Message) {
 	}
 }
 
+//处理本地
 func (h *HandlerService) localProcess(ctx context.Context, a *agent.Agent, route *route.Route, msg *message.Message) {
 	var mid uint
 	switch msg.Type {
-	case message.Request:
+	case message.Request: //如果是request则记录mid
 		mid = msg.ID
 	case message.Notify:
 		mid = 0
 	}
 
+	//根据route查找Handler然后利用反射进行调用
 	ret, err := processHandlerMessage(ctx, route, h.serializer, a.Session, msg.Data, msg.Type, false)
 	if msg.Type != message.Notify {
 		if err != nil {
 			logger.Log.Errorf("Failed to process handler message: %s", err.Error())
 			a.AnswerWithError(ctx, mid, err)
 		} else {
-			a.Session.ResponseMID(ctx, mid, ret)
+			a.Session.ResponseMID(ctx, mid, ret) //request才需要response调用的是agent的ResponseMID
 		}
 	} else {
 		metrics.ReportTimingFromCtx(ctx, h.metricsReporters, handlerType, nil)

@@ -66,6 +66,7 @@ type HandshakeClientData struct {
 	Version     string `json:"clientVersion"`
 }
 
+//客户端发送的握手数据
 // HandshakeData represents information about the handshake sent by the client.
 // `sys` corresponds to information independent from the app and `user` information
 // that depends on the app and is customized by the user.

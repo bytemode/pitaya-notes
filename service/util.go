@@ -52,6 +52,7 @@ func getHandler(rt *route.Route) (*component.Handler, error) {
 
 }
 
+//根据component.Handler中参数的去反序列化消息
 func unmarshalHandlerArg(handler *component.Handler, serializer serialize.Serializer, payload []byte) (interface{}, error) {
 	if handler.IsRawArg {
 		return payload, nil
@@ -96,6 +97,7 @@ func getMsgType(msgTypeIface interface{}) (message.Type, error) {
 	return msgType, nil
 }
 
+//对参数进行一些列的管道函数处理
 func executeBeforePipeline(ctx context.Context, data interface{}) (interface{}, error) {
 	var err error
 	res := data
@@ -134,26 +136,30 @@ func serializeReturn(ser serialize.Serializer, ret interface{}) ([]byte, error) 
 	return res, nil
 }
 
+//根据Route查找component.Handler利用反射机制调用handler，同时将消息和ctx作为参数
 func processHandlerMessage(
 	ctx context.Context,
-	rt *route.Route,
+	rt *route.Route, //路由信息
 	serializer serialize.Serializer,
 	session *session.Session,
-	data []byte,
-	msgTypeIface interface{},
-	remote bool,
+	data []byte, //消息体解压后的原始二进制
+	msgTypeIface interface{}, //message.Type
+	remote bool, //是否远程服务器
 ) ([]byte, error) {
+	//上下中添加session 和日志处理
 	if ctx == nil {
 		ctx = context.Background()
 	}
 	ctx = context.WithValue(ctx, constants.SessionCtxKey, session)
 	ctx = util.CtxWithDefaultLogger(ctx, rt.String(), session.UID())
 
+	//根据Route获取hander
 	h, err := getHandler(rt)
 	if err != nil {
 		return nil, e.NewError(err, e.ErrNotFoundCode)
 	}
 
+	//获取消息类型 push requse response notify
 	msgType, err := getMsgType(msgTypeIface)
 	if err != nil {
 		return nil, e.NewError(err, e.ErrInternalCode)
@@ -169,15 +175,18 @@ func processHandlerMessage(
 
 	// First unmarshal the handler arg that will be passed to
 	// both handler and pipeline functions
+	//根据component.Handler中参数的去反序列化消息
 	arg, err := unmarshalHandlerArg(h, serializer, data)
 	if err != nil {
 		return nil, e.NewError(err, e.ErrBadRequestCode)
 	}
 
+	//处理参数
 	if arg, err = executeBeforePipeline(ctx, arg); err != nil {
 		return nil, err
 	}
 
+	//利用反射进行handler调用
 	logger.Debugf("SID=%d, Data=%s", session.ID(), data)
 	args := []reflect.Value{h.Receiver, reflect.ValueOf(ctx)}
 	if arg != nil {
@@ -194,11 +203,13 @@ func processHandlerMessage(
 		resp = []byte("ack")
 	}
 
+	//处理handler调用的返回 resp
 	resp, err = executeAfterPipeline(ctx, resp, err)
 	if err != nil {
 		return nil, err
 	}
 
+	//序列化resp
 	ret, err := serializeReturn(serializer, resp)
 	if err != nil {
 		return nil, err
