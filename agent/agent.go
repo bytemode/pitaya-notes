@@ -63,22 +63,24 @@ const handlerType = "handler"
 type (
 	// Agent corresponds to a user and is used for storing raw Conn information
 	Agent struct {
-		Session            *session.Session    // session
-		appDieChan         chan bool           // app die channel
-		chDie              chan struct{}       // wait for close
-		chSend             chan pendingMessage // push message queue
-		chStopHeartbeat    chan struct{}       // stop heartbeats
-		chStopWrite        chan struct{}       // stop writing messages
+		Session *session.Session    // session
+		chSend  chan pendingMessage // push message queue
+
+		appDieChan      chan bool     // app die channel
+		chDie           chan struct{} // wait for close
+		chStopHeartbeat chan struct{} // stop heartbeats
+		chStopWrite     chan struct{} // stop writing messages
+
 		closeMutex         sync.Mutex          // Clsoe方法锁
-		conn               net.Conn            // low-level conn fd
-		decoder            codec.PacketDecoder // binary decoder
-		encoder            codec.PacketEncoder // binary encoder
-		heartbeatTimeout   time.Duration
-		lastAt             int64 // last heartbeat unix time stamp
-		messageEncoder     message.Encoder
-		messagesBufferSize int // size of the pending messages buffer
+		conn               net.Conn            // low-level conn fd  低级网络连接
+		decoder            codec.PacketDecoder // binary decoder     packet解码
+		encoder            codec.PacketEncoder // binary encoder     packet编码
+		heartbeatTimeout   time.Duration       //心跳间隔
+		lastAt             int64               // last heartbeat unix time stamp  //上次心跳时间
+		messageEncoder     message.Encoder     //message编码
+		messagesBufferSize int                 // size of the pending messages buffer 发送队列的消息长度
 		metricsReporters   []metrics.Reporter
-		serializer         serialize.Serializer // message serializer
+		serializer         serialize.Serializer // message serializer data部分的消息编码
 		state              int32                // current agent state
 	}
 
@@ -379,7 +381,7 @@ func (a *Agent) write() {
 				ID:    data.mid,
 				Err:   data.err,
 			}
-			//封装消息头处理路由消息id 压缩消息体
+			//封装消息头处理路由消息id 压缩消息体 flag(preserve+msg.type+rout flag) + msg id + route + zip payload data
 			em, err := a.messageEncoder.Encode(m)
 			if err != nil {
 				tracing.FinishSpan(data.ctx, err)
