@@ -30,6 +30,7 @@ import (
 
 type (
 	//Handler represents a message.Message's handler's meta information.
+	//Component中Handler方法的反射信息
 	Handler struct {
 		Receiver    reflect.Value  // receiver of method 反射获变量的值  reflect.ValueOf(xxx)
 		Method      reflect.Method // method stub
@@ -39,6 +40,7 @@ type (
 	}
 
 	//Remote represents remote's meta information.
+	//远程组件的Handler的方法反射信息
 	Remote struct {
 		Receiver reflect.Value  // receiver of method
 		Method   reflect.Method // method stub
@@ -48,6 +50,8 @@ type (
 
 	// Service implements a specific service, some of it's methods will be
 	// called when the correspond events is occurred.
+	//以组件为单位的Component的handler的反射信息的记录 一个Component 一个Service
+	//一个组件的反射信息和所有的Handler的反射信息
 	Service struct {
 		Name     string              // name of service
 		Type     reflect.Type        // type of the receiver

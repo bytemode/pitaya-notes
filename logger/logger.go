@@ -51,7 +51,7 @@ type Logger interface {
 var Log = initLogger()
 
 func initLogger() Logger {
-	plog := logrus.New()
+	plog := logrus.New() //创建logrus然后设置日志格式和日志级别同时设置日志字段
 	plog.Formatter = new(logrus.TextFormatter)
 	plog.Level = logrus.DebugLevel
 

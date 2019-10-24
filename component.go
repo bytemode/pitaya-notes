@@ -26,8 +26,8 @@ import (
 )
 
 var (
-	handlerComp = make([]regComp, 0)
-	remoteComp  = make([]regComp, 0)
+	handlerComp = make([]regComp, 0) //本地组件
+	remoteComp  = make([]regComp, 0) //远程组件
 )
 
 type regComp struct {
@@ -58,6 +58,7 @@ func startupComponents() {
 
 	// register all components
 	for _, c := range handlerComp {
+		//将组件生成的service注册进入HandlerService service主要是对组件以及方法的反射信息进行存储 得到路由和handler的map
 		if err := handlerService.Register(c.comp, c.opts); err != nil {
 			logger.Log.Errorf("Failed to register handler: %s", err.Error())
 		}

@@ -401,6 +401,7 @@ func Start() {
 		initSysRemotes()
 	}
 
+	//创建一个handlerService处理本地消息
 	handlerService = service.NewHandlerService(
 		app.dieChan,
 		app.packetDecoder,
@@ -418,9 +419,11 @@ func Start() {
 
 	periodicMetrics()
 
+	//启动监听
 	listen()
 
 	defer func() {
+		//关闭全局定时器
 		timer.GlobalTicker.Stop()
 		app.running = false
 	}()
@@ -439,31 +442,36 @@ func Start() {
 
 	logger.Log.Warn("server is stopping...")
 
+	//关闭session
 	session.CloseAll()
+	//关闭所有modle
 	shutdownModules()
+	//关闭所有component
 	shutdownComponents()
 }
 
 func listen() {
+	//将所有组件进行初始化并且进行handler的扫描记录反射信息生成service保存在handlerservices
 	startupComponents()
 	// create global ticker instance, timer precision could be customized
 	// by SetTimerPrecision
 	timer.GlobalTicker = time.NewTicker(timer.Precision)
 
 	logger.Log.Infof("starting server %s:%s", app.server.Type, app.server.ID)
+	//根据并发处理Handler的gorotine的数量配置启动goroutine 进行handler处理消息和定时任务
 	for i := 0; i < app.config.GetInt("pitaya.concurrency.handler.dispatch"); i++ {
-		go handlerService.Dispatch(i)
+		go handlerService.Dispatch(i) //对管道上的消息elect 收到后使用handler进行分发处理
 	}
-	for _, acc := range app.acceptors {
+	for _, acc := range app.acceptors { //遍历所有的接收器
 		a := acc
-		go func() {
+		go func() { //启动一个goroutine处理接收器上的conn chan 对新来的conn新启动一个gorroutine进行消息的处理
 			for conn := range a.GetConnChan() {
-				go handlerService.Handle(conn)
+				go handlerService.Handle(conn) //创建一个agent然后读取数据成成消息写入消息管道
 			}
 		}()
 
 		go func() {
-			a.ListenAndServe()
+			a.ListenAndServe() //启动开始接收器的监听
 		}()
 
 		logger.Log.Infof("listening with acceptor %s on addr %s", reflect.TypeOf(a), a.GetAddr())
@@ -475,6 +483,7 @@ func listen() {
 		RegisterModule(unique, "uniqueSession")
 	}
 
+	//初始化所有的module
 	startModules()
 
 	logger.Log.Info("all modules started!")

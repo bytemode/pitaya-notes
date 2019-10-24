@@ -20,12 +20,12 @@
 
 package interfaces
 
-// Module is the interface that represent a module.
+// Module is the interface that represent a module. 模块的接口
 type Module interface {
-	Init() error
-	AfterInit()
-	BeforeShutdown()
-	Shutdown() error
+	Init() error     //初始化
+	AfterInit()      //初始化之后
+	BeforeShutdown() //结束之前
+	Shutdown() error //结束
 }
 
 // BindingStorage interface

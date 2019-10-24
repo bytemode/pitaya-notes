@@ -50,12 +50,12 @@ import (
 )
 
 var (
-	handlers    = make(map[string]*component.Handler) // all handler method
+	handlers    = make(map[string]*component.Handler) // all handler method 所有的组件中的Handler和名字的map
 	handlerType = "handler"
 )
 
 type (
-	// HandlerService service
+	// HandlerService service 管理所有组件生成的Service 同时处理连接上的消息使用hander进行处理分发 也处理定时任务更新
 	HandlerService struct {
 		appDieChan         chan bool             // die channel app
 		chLocalProcess     chan unhandledMessage // channel of messages that will be processed locally
@@ -67,7 +67,7 @@ type (
 		remoteService      *RemoteService
 		serializer         serialize.Serializer          // message serializer
 		server             *cluster.Server               // server obj
-		services           map[string]*component.Service // all registered service
+		services           map[string]*component.Service // all registered service 管理Component的handler的反射信息
 		messageEncoder     message.Encoder
 		metricsReporters   []metrics.Reporter
 	}
@@ -115,6 +115,7 @@ func NewHandlerService(
 }
 
 // Dispatch message to corresponding logic handler
+//app启动的时候启动多个goroutine调用Dispatch来处理消息和定时任务
 func (h *HandlerService) Dispatch(thread int) {
 	// TODO: This timer is being stopped multiple times, it probably doesn't need to be stopped here
 	defer timer.GlobalTicker.Stop()
@@ -143,6 +144,8 @@ func (h *HandlerService) Dispatch(thread int) {
 }
 
 // Register registers components
+//将组件Component中的复合Handler的方法遍历处理按照路由名字生成一个map放入HandleServices
+// 一个组件生成一个Service存储组件本身和组件中handler的反射信息 同时将组件名字和service关联 且记录所有的路由和Handle的反射信息
 func (h *HandlerService) Register(comp component.Component, opts []component.Option) error {
 	s := component.NewService(comp, opts)
 
@@ -155,14 +158,15 @@ func (h *HandlerService) Register(comp component.Component, opts []component.Opt
 	}
 
 	// register all handlers
-	h.services[s.Name] = s
+	h.services[s.Name] = s //一个组件的Handler生成反射信息记录在Service 通过组件的名字进行映射记录
 	for name, handler := range s.Handlers {
-		handlers[fmt.Sprintf("%s.%s", s.Name, name)] = handler
+		handlers[fmt.Sprintf("%s.%s", s.Name, name)] = handler //组件名.方法名 和handler（方法的反射信息）的映射
 	}
 	return nil
 }
 
 // Handle handles messages from a conn
+//app 启动之后 对每个acceptor上管道上传来的conn 创建一个agent然后读取数据成成消息写入消息管道
 func (h *HandlerService) Handle(conn net.Conn) {
 	// create a client agent and startup write goroutine  agent用来处理心跳和给客户端发送消息
 	a := agent.NewAgent(conn, h.decoder, h.encoder, h.serializer, h.heartbeatTimeout, h.messagesBufferSize, h.appDieChan, h.messageEncoder, h.metricsReporters)

@@ -27,9 +27,11 @@ import (
 	"github.com/topfreegames/pitaya/logger"
 )
 
+//模块管理管理所有模块进行名字moudle进行map 同时管理Module的生命周期调用init afterinit BeforeShutdown 和Shutdown
+
 var (
-	modulesMap = make(map[string]interfaces.Module)
-	modulesArr = []moduleWrapper{}
+	modulesMap = make(map[string]interfaces.Module) //保存name Module的map
+	modulesArr = []moduleWrapper{}                  //保存一个Module的切片
 )
 
 type moduleWrapper struct {
@@ -91,6 +93,7 @@ func alreadyRegistered(name string) error {
 }
 
 // startModules starts all modules in order
+//调用module的init和afterinit
 func startModules() {
 	logger.Log.Debug("initializing all modules")
 	for _, modWrapper := range modulesArr {
