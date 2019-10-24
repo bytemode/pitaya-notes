@@ -30,16 +30,14 @@ type (
 	Option func(options *options)
 )
 
-//构建一个闭包函数去修改组件名字
-// WithName used to rename component name
+// WithName used to rename component name 构建一个闭包函数去修改组件名字
 func WithName(name string) Option {
 	return func(opt *options) {
 		opt.name = name
 	}
 }
 
-//构建一个闭包修改组件的handler name
-// WithNameFunc override handler name by specific function
+// WithNameFunc override handler name by specific function 构建一个闭包修改组件的handler name
 // such as: strings.ToUpper/strings.ToLower
 func WithNameFunc(fn func(string) string) Option {
 	return func(opt *options) {

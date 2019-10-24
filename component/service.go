@@ -34,8 +34,8 @@ type (
 		Receiver    reflect.Value  // receiver of method 反射获变量的值  reflect.ValueOf(xxx)
 		Method      reflect.Method // method stub
 		Type        reflect.Type   // low-level type of method 反射变量的类型 reflect.TypeOf(xxx)
-		IsRawArg    bool           // whether the data need to serialize
-		MessageType message.Type   // handler allowed message type (either request or notify) server接收的请求的客户端消息类型
+		IsRawArg    bool           // whether the data need to serialize 是否未经序列化的消息
+		MessageType message.Type   // handler allowed message type (either request or notify) server接收的请求的客户端消息类型 request notify
 	}
 
 	//Remote represents remote's meta information.
@@ -73,7 +73,7 @@ func NewService(comp Component, opts []Option) *Service {
 	if name := s.Options.name; name != "" {
 		s.Name = name
 	} else {
-		s.Name = reflect.Indirect(s.Receiver).Type().Name()
+		s.Name = reflect.Indirect(s.Receiver).Type().Name() //reflect.Indirect 获取s.Receiver的值相当于value.Elem() 呼气s.Receiver的的type 再获取名字
 	}
 
 	return s

@@ -18,10 +18,9 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-package co
+package component
 
-//实现一个默认组件
-// Base implements a default component for Component.
+// Base implements a default component for Component. 实现一个默认的组件
 type Base struct{}
 
 // Init was called to initialize the component.

@@ -56,27 +56,27 @@ func isRemoteMethod(method reflect.Method) bool {
 		return false
 	}
 
-	if t1 := mt.In(1); !t1.Implements(typeOfContext) {
+	if t1 := mt.In(1); !t1.Implements(typeOfContext) { //判断第二个参数是否context类型
 		return false
 	}
 
 	if mt.NumIn() == 3 {
-		if t2 := mt.In(2); !t2.Implements(typeOfProtoMsg) {
+		if t2 := mt.In(2); !t2.Implements(typeOfProtoMsg) { ////判断第三个参数是否proto.Message类型
 			return false
 		}
 	}
 
 	// Method needs two outs: interface{}(that implements proto.Message), error
-	if mt.NumOut() != 2 {
+	if mt.NumOut() != 2 { //判断返回值的数量
 		return false
 	}
 
 	if (mt.Out(0).Kind() != reflect.Ptr) || mt.Out(1) != typeOfError {
-		return false
+		return false //第一个返回值是指针 第二个返回值是是error
 	}
 
 	if o0 := mt.Out(0); !o0.Implements(typeOfProtoMsg) {
-		return false
+		return false //返回值的类型是proto.Message
 	}
 
 	return true
@@ -91,7 +91,7 @@ func isHandlerMethod(method reflect.Method) bool {
 	}
 
 	// Method needs two or three ins: receiver, context.Context and optional []byte or pointer.
-	if mt.NumIn() != 2 && mt.NumIn() != 3 {
+	if mt.NumIn() != 2 && mt.NumIn() != 3 { //判断方法的参数 需要有两个或者三个参数 receivcer context 第三个参数是[]byte 或者 *proto.message
 		return false
 	}
 
@@ -100,7 +100,7 @@ func isHandlerMethod(method reflect.Method) bool {
 	}
 
 	if mt.NumIn() == 3 && mt.In(2).Kind() != reflect.Ptr && mt.In(2) != typeOfBytes {
-		return false
+		return false //第三个参数是ptr或者[]byte
 	}
 
 	// Method needs either no out or two outs: interface{}(or []byte), error
@@ -109,7 +109,7 @@ func isHandlerMethod(method reflect.Method) bool {
 	}
 
 	if mt.NumOut() == 2 && (mt.Out(1) != typeOfError || mt.Out(0) != typeOfBytes && mt.Out(0).Kind() != reflect.Ptr) {
-		return false
+		return false //返回值有两个 第一个是[]byte或者proto.Message 第二个是error
 	}
 
 	return true
@@ -131,7 +131,7 @@ func suitableRemoteMethods(typ reflect.Type, nameFunc func(string) string) map[s
 				HasArgs: method.Type.NumIn() == 3,
 			}
 			if mt.NumIn() == 3 {
-				methods[mn].Type = mt.In(2)
+				methods[mn].Type = mt.In(2) //方法的第二个输入参数的类型消息的类型参数
 			}
 		}
 	}
@@ -140,14 +140,15 @@ func suitableRemoteMethods(typ reflect.Type, nameFunc func(string) string) map[s
 
 func suitableHandlerMethods(typ reflect.Type, nameFunc func(string) string) map[string]*Handler {
 	methods := make(map[string]*Handler)
+	//根据方法的数量取出方法
 	for m := 0; m < typ.NumMethod(); m++ {
 		method := typ.Method(m)
-		mt := method.Type
-		mn := method.Name
+		mt := method.Type //方法的类型信息
+		mn := method.Name //方法名
 		if isHandlerMethod(method) {
 			raw := false
 			if mt.NumIn() == 3 && mt.In(2) == typeOfBytes {
-				raw = true
+				raw = true //是否原始字节消息
 			}
 			// rewrite handler name
 			if nameFunc != nil {
@@ -155,14 +156,14 @@ func suitableHandlerMethods(typ reflect.Type, nameFunc func(string) string) map[
 			}
 			var msgType message.Type
 			if mt.NumOut() == 0 {
-				msgType = message.Notify
+				msgType = message.Notify //没有返回值的是Nottfy
 			} else {
-				msgType = message.Request
+				msgType = message.Request //有返回值的是Request
 			}
 			handler := &Handler{
-				Method:      method,
-				IsRawArg:    raw,
-				MessageType: msgType,
+				Method:      method,  //方法
+				IsRawArg:    raw,     //消息是否未序列化
+				MessageType: msgType, //request notify
 			}
 			if mt.NumIn() == 3 {
 				handler.Type = mt.In(2)
