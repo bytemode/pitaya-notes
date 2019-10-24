@@ -52,7 +52,7 @@ type (
 		Name     string              // name of service
 		Type     reflect.Type        // type of the receiver
 		Receiver reflect.Value       // receiver of methods for the service
-		Handlers map[string]*Handler // registered methods
+		Handlers map[string]*Handler // registered methods 所有Handler信息 使用路由和handler的map
 		Remotes  map[string]*Remote  // registered remote methods
 		Options  options             // options
 	}
@@ -98,6 +98,7 @@ func (s *Service) ExtractHandler() error {
 	}
 
 	// Install the methods
+	//遍历S.Type的method封装为Handler
 	s.Handlers = suitableHandlerMethods(s.Type, s.Options.nameFunc)
 
 	if len(s.Handlers) == 0 {
@@ -113,7 +114,7 @@ func (s *Service) ExtractHandler() error {
 	}
 
 	for i := range s.Handlers {
-		s.Handlers[i].Receiver = s.Receiver
+		s.Handlers[i].Receiver = s.Receiver //receiver机方法的绑定的对象（调用者）
 	}
 
 	return nil
@@ -135,6 +136,7 @@ func (s *Service) ExtractRemote() error {
 	}
 
 	// Install the methods
+	//遍历远程方法 生成Handler信息
 	s.Remotes = suitableRemoteMethods(s.Type, s.Options.nameFunc)
 
 	if len(s.Remotes) == 0 {
