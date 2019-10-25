@@ -96,7 +96,7 @@ type App struct {
 
 var (
 	app = &App{
-		server:           cluster.NewServer(uuid.New().String(), "game", true, map[string]string{}),
+		server:           cluster.NewServer(uuid.New().String(), "game", true, map[string]string{}), //创建一个Server信息结构体
 		debug:            false,
 		startAt:          time.Now(),
 		dieChan:          make(chan bool),

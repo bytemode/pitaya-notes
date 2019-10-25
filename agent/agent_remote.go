@@ -116,6 +116,7 @@ func (a *Remote) Push(route string, v interface{}) error {
 			a.Session.ID(), a.Session.UID(), route, v)
 	}
 
+	//通过前端服务器id过去服务器信息
 	sv, err := a.serviceDiscovery.GetServer(a.frontendID)
 	if err != nil {
 		return err

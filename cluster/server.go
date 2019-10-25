@@ -27,11 +27,11 @@ import (
 	"github.com/topfreegames/pitaya/logger"
 )
 
-// Server struct
+// Server struct Server的一个信息结构存储id类型 是否前端服务器
 type Server struct {
 	ID       string            `json:"id"` //成员变量标签 序列化作为键值
 	Type     string            `json:"type"`
-	Metadata map[string]string `json:"metadata"`
+	Metadata map[string]string `json:"metadata"` //记录一些数据
 	Frontend bool              `json:"frontend"`
 	Hostname string            `json:"hostname"`
 }

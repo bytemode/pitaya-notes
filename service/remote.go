@@ -46,17 +46,17 @@ import (
 	"github.com/topfreegames/pitaya/util"
 )
 
-// RemoteService struct
+// RemoteService struct 远程服务
 type RemoteService struct {
-	rpcServer              cluster.RPCServer
-	serviceDiscovery       cluster.ServiceDiscovery
-	serializer             serialize.Serializer
-	encoder                codec.PacketEncoder
-	rpcClient              cluster.RPCClient
+	rpcServer              cluster.RPCServer             //rpcserver
+	serviceDiscovery       cluster.ServiceDiscovery      //服务发现客户端
+	serializer             serialize.Serializer          //序列化
+	encoder                codec.PacketEncoder           //oacker 编码
+	rpcClient              cluster.RPCClient             //rpc客户端
 	services               map[string]*component.Service // all registered service
-	router                 *router.Router
-	messageEncoder         message.Encoder
-	server                 *cluster.Server // server obj
+	router                 *router.Router                //路由器
+	messageEncoder         message.Encoder               //message 编码
+	server                 *cluster.Server               // server obj 远端服务器对象
 	remoteBindingListeners []cluster.RemoteBindingListener
 }
 
@@ -85,7 +85,7 @@ func NewRemoteService(
 	}
 }
 
-var remotes = make(map[string]*component.Remote) // all remote method
+var remotes = make(map[string]*component.Remote) // all remote method   所有远程方法调用的反射信息
 
 func (r *RemoteService) remoteProcess(
 	ctx context.Context,
@@ -96,7 +96,7 @@ func (r *RemoteService) remoteProcess(
 ) {
 	res, err := r.remoteCall(ctx, server, protos.RPCType_Sys, route, a.Session, msg)
 	switch msg.Type {
-	case message.Request:
+	case message.Request: //请求则通过session返回res
 		if err != nil {
 			logger.Log.Errorf("Failed to process remote: %s", err.Error())
 			a.AnswerWithError(ctx, msg.ID, err)
@@ -189,7 +189,7 @@ func (r *RemoteService) KickUser(ctx context.Context, kick *protos.KickMsg) (*pr
 	return nil, constants.ErrSessionNotFound
 }
 
-// DoRPC do rpc and get answer
+// DoRPC do rpc and get answer 调用指定id服务器的rpc
 func (r *RemoteService) DoRPC(ctx context.Context, serverID string, route *route.Route, protoData []byte) (*protos.Response, error) {
 	msg := &message.Message{
 		Type:  message.Request,
@@ -237,7 +237,7 @@ func (r *RemoteService) RPC(ctx context.Context, serverID string, route *route.R
 	return nil
 }
 
-// Register registers components
+// Register registers components 注册所有的组件保存Handler的反射信息到Service
 func (r *RemoteService) Register(comp component.Component, opts []component.Option) error {
 	s := component.NewService(comp, opts)
 
@@ -258,6 +258,7 @@ func (r *RemoteService) Register(comp component.Component, opts []component.Opti
 	return nil
 }
 
+//processRemoteMessage 处理远程消息
 func processRemoteMessage(ctx context.Context, req *protos.Request, r *RemoteService) *protos.Response {
 	rt, err := route.Decode(req.GetMsg().GetRoute())
 	if err != nil {
@@ -275,9 +276,9 @@ func processRemoteMessage(ctx context.Context, req *protos.Request, r *RemoteSer
 
 	switch {
 	case req.Type == protos.RPCType_Sys:
-		return r.handleRPCSys(ctx, req, rt)
+		return r.handleRPCSys(ctx, req, rt) //系统rpc调用
 	case req.Type == protos.RPCType_User:
-		return r.handleRPCUser(ctx, req, rt)
+		return r.handleRPCUser(ctx, req, rt) //用户rpc
 	default:
 		return &protos.Response{
 			Error: &protos.Error{
@@ -292,9 +293,10 @@ func processRemoteMessage(ctx context.Context, req *protos.Request, r *RemoteSer
 }
 
 func (r *RemoteService) handleRPCUser(ctx context.Context, req *protos.Request, rt *route.Route) *protos.Response {
+	//构建一个rpc返回消息
 	response := &protos.Response{}
 
-	remote, ok := remotes[rt.Short()]
+	remote, ok := remotes[rt.Short()] //根据路由获取远程调用的方法反射信息
 	if !ok {
 		logger.Log.Warnf("pitaya/remote: %s not found", rt.Short())
 		response := &protos.Response{
@@ -308,6 +310,7 @@ func (r *RemoteService) handleRPCUser(ctx context.Context, req *protos.Request, 
 		}
 		return response
 	}
+	//构建调用参数 ctx msg
 	params := []reflect.Value{remote.Receiver, reflect.ValueOf(ctx)}
 	if remote.HasArgs {
 		arg, err := unmarshalRemoteArg(remote, req.GetMsg().GetData())
@@ -323,6 +326,7 @@ func (r *RemoteService) handleRPCUser(ctx context.Context, req *protos.Request, 
 		params = append(params, reflect.ValueOf(arg))
 	}
 
+	//方法调用
 	ret, err := util.Pcall(remote.Method, params)
 	if err != nil {
 		response := &protos.Response{
@@ -367,6 +371,7 @@ func (r *RemoteService) handleRPCUser(ctx context.Context, req *protos.Request, 
 	return response
 }
 
+//handleRPCSys系统rpc
 func (r *RemoteService) handleRPCSys(ctx context.Context, req *protos.Request, rt *route.Route) *protos.Response {
 	reply := req.GetMsg().GetReply()
 	response := &protos.Response{}
@@ -392,6 +397,7 @@ func (r *RemoteService) handleRPCSys(ctx context.Context, req *protos.Request, r
 		return response
 	}
 
+	//根据路由信息进行消息处理
 	ret, err := processHandlerMessage(ctx, rt, r.serializer, a.Session, req.GetMsg().GetData(), req.GetMsg().GetType(), true)
 	if err != nil {
 		logger.Log.Warnf(err.Error())
@@ -426,6 +432,7 @@ func (r *RemoteService) remoteCall(
 	var err error
 	target := server
 
+	//远程目标服务器为空则重新使用路由函数获取一个服务器
 	if target == nil {
 		target, err = r.router.Route(ctx, rpcType, svType, route, msg)
 		if err != nil {
@@ -433,6 +440,7 @@ func (r *RemoteService) remoteCall(
 		}
 	}
 
+	//rpc调用远程服务器
 	res, err := r.rpcClient.Call(ctx, rpcType, route, session, msg, target)
 	if err != nil {
 		return nil, err
