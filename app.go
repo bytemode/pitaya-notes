@@ -71,26 +71,26 @@ const (
 
 // App is the base app struct
 type App struct {
-	acceptors        []acceptor.Acceptor
-	config           *config.Config
+	acceptors        []acceptor.Acceptor //有哪些接收器
+	config           *config.Config      //viper的配置
 	configured       bool
 	debug            bool
 	dieChan          chan bool
 	heartbeat        time.Duration
 	onSessionBind    func(*session.Session)
-	messageEncoder   message.Encoder
-	packetDecoder    codec.PacketDecoder
-	packetEncoder    codec.PacketEncoder
-	router           *router.Router
-	rpcClient        cluster.RPCClient
-	rpcServer        cluster.RPCServer
+	messageEncoder   message.Encoder     //message编码
+	packetDecoder    codec.PacketDecoder //packet的解码
+	packetEncoder    codec.PacketEncoder //packet的编码
+	router           *router.Router      //路由器 rpc时选择server
+	rpcClient        cluster.RPCClient   //集群rpc客户端
+	rpcServer        cluster.RPCServer   //集群rpc服务器
 	metricsReporters []metrics.Reporter
 	running          bool
-	serializer       serialize.Serializer
+	serializer       serialize.Serializer //消息结构的序列化
 	server           *cluster.Server
-	serverMode       ServerMode
-	serviceDiscovery cluster.ServiceDiscovery
-	startAt          time.Time
+	serverMode       ServerMode               //集群还是单服
+	serviceDiscovery cluster.ServiceDiscovery //集群服务发现
+	startAt          time.Time                //启动时间
 	worker           *worker.Worker
 }
 
@@ -101,11 +101,11 @@ var (
 		startAt:          time.Now(),
 		dieChan:          make(chan bool),
 		acceptors:        []acceptor.Acceptor{},
-		packetDecoder:    codec.NewPomeloPacketDecoder(),
+		packetDecoder:    codec.NewPomeloPacketDecoder(), //pomelo的packet编解码
 		packetEncoder:    codec.NewPomeloPacketEncoder(),
 		metricsReporters: make([]metrics.Reporter, 0),
-		serverMode:       Standalone,
-		serializer:       json.NewSerializer(),
+		serverMode:       Standalone,           //单服
+		serializer:       json.NewSerializer(), //json
 		configured:       false,
 		running:          false,
 		router:           router.New(),
@@ -126,14 +126,19 @@ func Configure(
 	if app.configured {
 		logger.Log.Warn("pitaya configured twice!")
 	}
+
+	//读取配置个心跳哦信息
 	app.config = config.NewConfig(cfgs...)
 	if app.heartbeat == time.Duration(0) {
 		app.heartbeat = app.config.GetDuration("pitaya.heartbeat.interval")
 	}
+
+	//前端服务器 类型 服务器模式
 	app.server.Frontend = isFrontend
 	app.server.Type = serverType
 	app.serverMode = serverMode
 	app.server.Metadata = serverMetadata
+	//根据是否压缩创建一个messageEncoder messageDecoder
 	app.messageEncoder = message.NewMessagesEncoder(app.config.GetBool("pitaya.handler.messages.compression"))
 	configureMetrics(serverType)
 	configureDefaultPipelines(app.config)
@@ -201,22 +206,22 @@ func SetDebug(debug bool) {
 	app.debug = debug
 }
 
-// SetPacketDecoder changes the decoder used to parse messages received
+// SetPacketDecoder changes the decoder used to parse messages received 设置自己的packetdecoder
 func SetPacketDecoder(d codec.PacketDecoder) {
 	app.packetDecoder = d
 }
 
-// SetPacketEncoder changes the encoder used to package outgoing messages
+// SetPacketEncoder changes the encoder used to package outgoing messages 设置自己的packetencoder
 func SetPacketEncoder(e codec.PacketEncoder) {
 	app.packetEncoder = e
 }
 
-// SetHeartbeatTime sets the heartbeat time
+// SetHeartbeatTime sets the heartbeat time 设置心跳
 func SetHeartbeatTime(interval time.Duration) {
 	app.heartbeat = interval
 }
 
-// SetLogger logger setter
+// SetLogger logger setter 设置日志
 func SetLogger(l logger.Logger) {
 	logger.Log = l
 }
@@ -236,23 +241,23 @@ func GetMetricsReporters() []metrics.Reporter {
 	return app.metricsReporters
 }
 
-// SetRPCServer to be used
+// SetRPCServer to be used  设置rpc sercer
 func SetRPCServer(s cluster.RPCServer) {
 	app.rpcServer = s
 }
 
-// SetRPCClient to be used
+// SetRPCClient to be used 设置rpc client
 func SetRPCClient(s cluster.RPCClient) {
 	app.rpcClient = s
 }
 
-// SetServiceDiscoveryClient to be used
+// SetServiceDiscoveryClient to be used 设置服务发现客户端
 func SetServiceDiscoveryClient(s cluster.ServiceDiscovery) {
 	app.serviceDiscovery = s
 }
 
 // SetSerializer customize application serializer, which automatically Marshal
-// and UnMarshal handler payload
+// and UnMarshal handler payload 设置序列化
 func SetSerializer(seri serialize.Serializer) {
 	app.serializer = seri
 }
@@ -264,7 +269,7 @@ func GetSerializer() serialize.Serializer {
 
 // GetServer gets the local server instance
 func GetServer() *cluster.Server {
-	return app.server
+	return app.server //获取本地服务器
 }
 
 // GetServerByID returns the server with the specified id
@@ -287,6 +292,7 @@ func AddMetricsReporter(mr metrics.Reporter) {
 	app.metricsReporters = append(app.metricsReporters, mr)
 }
 
+// startDefaultSD 设置默认的服务发现客户端 etcd
 func startDefaultSD() {
 	// initialize default service discovery
 	var err error
@@ -300,6 +306,7 @@ func startDefaultSD() {
 	}
 }
 
+// startDefaultRPCServer  设置默认的Nats作为rpc server
 func startDefaultRPCServer() {
 	// initialize default rpc server
 	rpcServer, err := cluster.NewNatsRPCServer(app.config, app.server, app.metricsReporters, app.dieChan)
@@ -309,6 +316,7 @@ func startDefaultRPCServer() {
 	SetRPCServer(rpcServer)
 }
 
+// startDefaultRPCClient  设置默认的Nats作为rpc client
 func startDefaultRPCClient() {
 	// initialize default rpc client
 	rpcClient, err := cluster.NewNatsRPCClient(app.config, app.server, app.metricsReporters, app.dieChan)
@@ -318,6 +326,7 @@ func startDefaultRPCClient() {
 	SetRPCClient(rpcClient)
 }
 
+// 初始化注册一个远端组件
 func initSysRemotes() {
 	sys := &remote.Sys{}
 	RegisterRemote(sys,

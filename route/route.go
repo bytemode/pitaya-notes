@@ -36,10 +36,11 @@ var (
 )
 
 // Route struct
+// 路由信息
 type Route struct {
-	SvType  string
-	Service string
-	Method  string
+	SvType  string //类型
+	Service string //服务名
+	Method  string //方法名
 }
 
 // NewRoute creates a new route

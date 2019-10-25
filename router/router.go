@@ -33,13 +33,14 @@ import (
 	"github.com/topfreegames/pitaya/route"
 )
 
-// Router struct
+// Router 指定路由信息主要是为sys和user rpc做路由 Router struct 包含路由客户端和路由表的结构体.
 type Router struct {
-	serviceDiscovery cluster.ServiceDiscovery
-	routesMap        map[string]RoutingFunc
+	serviceDiscovery cluster.ServiceDiscovery //服务发现客户端
+	routesMap        map[string]RoutingFunc   //自定义指定类型服务器的路由函数 servertype--server
 }
 
 // RoutingFunc defines a routing function
+// 自定义路由函数
 type RoutingFunc func(
 	ctx context.Context,
 	route *route.Route,
@@ -59,6 +60,7 @@ func (r *Router) SetServiceDiscovery(sd cluster.ServiceDiscovery) {
 	r.serviceDiscovery = sd
 }
 
+//默认的路由是随机返回一台cluster.Server
 func (r *Router) defaultRoute(
 	servers map[string]*cluster.Server,
 ) *cluster.Server {
@@ -74,25 +76,32 @@ func (r *Router) defaultRoute(
 
 // Route gets the right server to use in the call
 func (r *Router) Route(
-	ctx context.Context,
-	rpcType protos.RPCType,
-	svType string,
-	route *route.Route,
-	msg *message.Message,
+	ctx context.Context, //上下文
+	rpcType protos.RPCType, //rpc的类型sys user
+	svType string, //服务器类型
+	route *route.Route, //路由表
+	msg *message.Message, //Message
 ) (*cluster.Server, error) {
 	if r.serviceDiscovery == nil {
 		return nil, constants.ErrServiceDiscoveryNotInitialized
 	}
+
+	//serviceDiscovery返回指定类型的所有服务器
 	serversOfType, err := r.serviceDiscovery.GetServersByType(svType)
 	if err != nil {
 		return nil, err
 	}
+
+	//User rpc直接随机一台server返回
 	if rpcType == protos.RPCType_User {
 		server := r.defaultRoute(serversOfType)
 		return server, nil
 	}
+
+	//sys rpc 使用指定类型获路由函数根据路由函数返回一个server
 	routeFunc, ok := r.routesMap[svType]
 	if !ok {
+		//没有自定义路由函数则直接随机一个
 		logger.Log.Debugf("no specific route for svType: %s, using default route", svType)
 		server := r.defaultRoute(serversOfType)
 		return server, nil
@@ -101,6 +110,7 @@ func (r *Router) Route(
 }
 
 // AddRoute adds a routing function to a server type
+// 指定类型添加一个路由函数
 func (r *Router) AddRoute(
 	serverType string,
 	routingFunction RoutingFunc,
