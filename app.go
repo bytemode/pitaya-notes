@@ -111,8 +111,8 @@ var (
 		router:           router.New(),
 	}
 
-	remoteService  *service.RemoteService
-	handlerService *service.HandlerService
+	remoteService  *service.RemoteService  //远程的handlerService
+	handlerService *service.HandlerService //本地的handlerService
 )
 
 // Configure configures the app
@@ -358,6 +358,7 @@ func Start() {
 		logger.Log.Fatal("frontend servers should have at least one configured acceptor")
 	}
 
+	//如果是集群模式则启动 etcd服务发现客户端 启动nats RPC Server 和 Client 并且注册到模块中
 	if app.serverMode == Cluster {
 		if app.serviceDiscovery == nil {
 			logger.Log.Warn("creating default service discovery because cluster mode is enabled, " +
@@ -379,6 +380,7 @@ func Start() {
 			app.serviceDiscovery.AddListener(app.rpcClient.(*cluster.GRPCClient))
 		}
 
+		//注册rpc某块和服务发现模块
 		if err := RegisterModuleBefore(app.rpcServer, "rpcServer"); err != nil {
 			logger.Log.Fatal("failed to register rpc server module: %s", err.Error())
 		}
@@ -394,6 +396,7 @@ func Start() {
 
 		app.router.SetServiceDiscovery(app.serviceDiscovery)
 
+		//创建remoteService
 		remoteService = service.NewRemoteService(
 			app.rpcClient,
 			app.rpcServer,
@@ -405,6 +408,7 @@ func Start() {
 			app.server,
 		)
 
+		//remoteService信息交给将nats的rpc server
 		app.rpcServer.SetPitayaServer(remoteService)
 
 		initSysRemotes()
