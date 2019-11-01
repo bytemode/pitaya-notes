@@ -53,12 +53,17 @@ func NewGRPCServer(config *config.Config, server *Server, metricsReporters []met
 // Init inits grpc rpc server
 func (gs *GRPCServer) Init() error {
 	port := gs.config.GetInt("pitaya.cluster.rpc.server.grpc.port")
+	//监听端口
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
 	if err != nil {
 		return err
 	}
+	//实例化grpc Server
 	gs.grpcSv = grpc.NewServer()
-	protos.RegisterPitayaServer(gs.grpcSv, gs.pitayaServer)
+
+	//在 gRPC 服务器注册我们的服务实现
+	protos.RegisterPitayaServer(gs.grpcSv, gs.pitayaServer) //gs.grpcSv.RegisterService(&_Pitaya_serviceDesc, gs.pitayaServer)
+	//启动grpc服务
 	go gs.grpcSv.Serve(lis)
 	return nil
 }
@@ -79,6 +84,6 @@ func (gs *GRPCServer) Shutdown() error {
 	// graceful: stops the server from accepting new connections and RPCs and
 	// blocks until all the pending RPCs are finished.
 	// source: https://godoc.org/google.golang.org/grpc#Server.GracefulStop
-	gs.grpcSv.GracefulStop()
+	gs.grpcSv.GracefulStop() //优雅的退出
 	return nil
 }
