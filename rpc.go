@@ -31,11 +31,13 @@ import (
 )
 
 // RPC calls a method in a different server
+// RPC 调用 路由信息 replay rpc调用回复 arg rpc调用参数
 func RPC(ctx context.Context, routeStr string, reply proto.Message, arg proto.Message) error {
 	return doSendRPC(ctx, "", routeStr, reply, arg)
 }
 
 // RPCTo send a rpc to a specific server
+// RPC 调用指定server 路由信息 replay rpc调用回复 arg rpc调用参数
 func RPCTo(ctx context.Context, serverID, routeStr string, reply proto.Message, arg proto.Message) error {
 	return doSendRPC(ctx, serverID, routeStr, reply, arg)
 }
@@ -70,7 +72,7 @@ func doSendRPC(ctx context.Context, serverID, routeStr string, reply proto.Messa
 		return constants.ErrReplyShouldBePtr
 	}
 
-	r, err := route.Decode(routeStr)
+	r, err := route.Decode(routeStr) //根据字符串分割出路由信息 类型.服务名.方法名
 	if err != nil {
 		return err
 	}
@@ -83,5 +85,6 @@ func doSendRPC(ctx context.Context, serverID, routeStr string, reply proto.Messa
 		return constants.ErrNonsenseRPC
 	}
 
+	//在RemoteService中调用rcp clint的Call方法 如果有指定服务器id则从服务发现中获取次server进行调用
 	return remoteService.RPC(ctx, serverID, r, reply, arg)
 }
