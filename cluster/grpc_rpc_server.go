@@ -61,14 +61,14 @@ func (gs *GRPCServer) Init() error {
 	//实例化grpc Server
 	gs.grpcSv = grpc.NewServer()
 
-	//在 gRPC 服务器注册我们的服务实现
+	//在 gRPC 服务器注册我们的服务实现 gs.pitayaServer
 	protos.RegisterPitayaServer(gs.grpcSv, gs.pitayaServer) //gs.grpcSv.RegisterService(&_Pitaya_serviceDesc, gs.pitayaServer)
-	//启动grpc服务
+	//启动grpc服务 启动监听 accept conn go routine处理连接请求
 	go gs.grpcSv.Serve(lis)
 	return nil
 }
 
-// SetPitayaServer sets the pitaya server
+// SetPitayaServer sets the pitaya server 设置grpc具体实现的服务接口 基本上都是remoteService
 func (gs *GRPCServer) SetPitayaServer(ps protos.PitayaServer) {
 	gs.pitayaServer = ps
 }

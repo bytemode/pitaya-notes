@@ -123,7 +123,7 @@ func (r *RemoteService) AddRemoteBindingListener(bindingListener cluster.RemoteB
 	r.remoteBindingListeners = append(r.remoteBindingListeners, bindingListener)
 }
 
-// Call processes a remote call
+// Call processes a remote call rpc客户端的方法调用
 func (r *RemoteService) Call(ctx context.Context, req *protos.Request) (*protos.Response, error) {
 	c, err := util.GetContextFromRequest(req, r.server.ID)
 	c = util.StartSpanFromRequest(c, r.server.ID, req.GetMsg().GetRoute())
