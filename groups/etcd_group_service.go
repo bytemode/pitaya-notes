@@ -15,7 +15,7 @@ import (
 )
 
 var (
-	clientInstance     *clientv3.Client
+	clientInstance     *clientv3.Client //etcd client
 	transactionTimeout time.Duration
 	etcdOnce           sync.Once
 )
@@ -51,6 +51,7 @@ func initClientInstance(config *config.Config, clientOrNil *clientv3.Client) err
 }
 
 func createBaseClient(config *config.Config) (*clientv3.Client, error) {
+	//创建ectd客户端
 	cli, err := clientv3.New(clientv3.Config{
 		Endpoints:   config.GetStringSlice("pitaya.groups.etcd.endpoints"),
 		DialTimeout: config.GetDuration("pitaya.groups.etcd.dialtimeout"),
@@ -58,6 +59,7 @@ func createBaseClient(config *config.Config) (*clientv3.Client, error) {
 	if err != nil {
 		return nil, err
 	}
+	//创建带前缀的kv
 	cli.KV = namespace.NewKV(cli.KV, config.GetString("pitaya.groups.etcd.prefix"))
 	return cli, nil
 }
@@ -73,6 +75,7 @@ func memberKey(groupName, uid string) string {
 func getGroupKV(ctx context.Context, groupName string) (*mvccpb.KeyValue, error) {
 	ctxT, cancel := context.WithTimeout(ctx, transactionTimeout)
 	defer cancel()
+	//获取kv  get
 	etcdRes, err := clientInstance.Get(ctxT, groupKey(groupName))
 	if err != nil {
 		return nil, err
@@ -90,6 +93,7 @@ func (c *EtcdGroupService) createGroup(ctx context.Context, groupName string, le
 	ctxT, cancel := context.WithTimeout(ctx, transactionTimeout)
 	defer cancel()
 	if leaseID != 0 {
+		//获取groupname如果不存在就put到etcd
 		etcdRes, err = clientInstance.Txn(ctxT).
 			If(clientv3.Compare(clientv3.CreateRevision(groupKey(groupName)), "=", 0)).
 			Then(clientv3.OpPut(groupKey(groupName), "", clientv3.WithLease(leaseID))).
@@ -119,6 +123,7 @@ func (c *EtcdGroupService) GroupCreate(ctx context.Context, groupName string) er
 func (c *EtcdGroupService) GroupCreateWithTTL(ctx context.Context, groupName string, ttlTime time.Duration) error {
 	ctxT, cancel := context.WithTimeout(ctx, transactionTimeout)
 	defer cancel()
+	//新建一个leaase
 	lease, err := clientInstance.Grant(ctxT, int64(ttlTime.Seconds()))
 	if err != nil {
 		return err
