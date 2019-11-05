@@ -86,8 +86,8 @@ type App struct {
 	rpcServer        cluster.RPCServer   //集群rpc服务器
 	metricsReporters []metrics.Reporter
 	running          bool
-	serializer       serialize.Serializer //消息结构的序列化
-	server           *cluster.Server
+	serializer       serialize.Serializer     //消息结构的序列化
+	server           *cluster.Server          //本地服务器
 	serverMode       ServerMode               //集群还是单服
 	serviceDiscovery cluster.ServiceDiscovery //集群服务发现
 	startAt          time.Time                //启动时间
