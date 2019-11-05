@@ -38,12 +38,12 @@ func SendKickToUsers(uids []string, frontendType string) ([]string, error) {
 	var notKickedUids []string
 
 	for _, uid := range uids {
-		if s := session.GetSessionByUID(uid); s != nil {
+		if s := session.GetSessionByUID(uid); s != nil { //本地服务器session中的conn踢人
 			if err := s.Kick(context.Background()); err != nil {
 				notKickedUids = append(notKickedUids, uid)
 				logger.Log.Errorf("Session kick error, ID=%d, UID=%d, ERROR=%s", s.ID(), s.UID(), err.Error())
 			}
-		} else if app.rpcClient != nil {
+		} else if app.rpcClient != nil { //使用rpc调用
 			kick := &protos.KickMsg{UserId: uid}
 			if err := app.rpcClient.SendKick(uid, frontendType, kick); err != nil {
 				notKickedUids = append(notKickedUids, uid)

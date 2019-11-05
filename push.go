@@ -44,14 +44,14 @@ func SendPushToUsers(route string, v interface{}, uids []string, frontendType st
 
 	logger.Log.Debugf("Type=PushToUsers Route=%s, Data=%+v, SvType=%s, #Users=%d", route, v, frontendType, len(uids))
 
-	for _, uid := range uids {
+	for _, uid := range uids { //前端服务器则使用session进行push
 		if s := session.GetSessionByUID(uid); s != nil && app.server.Type == frontendType {
 			if err := s.Push(route, data); err != nil {
 				notPushedUids = append(notPushedUids, uid)
 				logger.Log.Errorf("Session push message error, ID=%d, UID=%d, Error=%s",
 					s.ID(), s.UID(), err.Error())
 			}
-		} else if app.rpcClient != nil {
+		} else if app.rpcClient != nil { //负责使用rpc调用进行SendPush
 			push := &protos.Push{
 				Route: route,
 				Uid:   uid,
