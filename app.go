@@ -108,7 +108,7 @@ var (
 		serializer:       json.NewSerializer(), //json
 		configured:       false,
 		running:          false,
-		router:           router.New(),
+		router:           router.New(), //路由器
 	}
 
 	remoteService  *service.RemoteService  //远程的handlerService
@@ -188,6 +188,7 @@ func configureDefaultPipelines(config *config.Config) {
 }
 
 // AddAcceptor adds a new acceptor to app
+// AddAcceptor添加一个接收器处理网络连接
 func AddAcceptor(ac acceptor.Acceptor) {
 	if !app.server.Frontend {
 		logger.Log.Error("tried to add an acceptor to a backend server, skipping")
@@ -208,12 +209,12 @@ func SetDebug(debug bool) {
 
 // SetPacketDecoder changes the decoder used to parse messages received 设置自己的packetdecoder
 func SetPacketDecoder(d codec.PacketDecoder) {
-	app.packetDecoder = d
+	app.packetDecoder = d //设置packet 层的反序列化
 }
 
 // SetPacketEncoder changes the encoder used to package outgoing messages 设置自己的packetencoder
 func SetPacketEncoder(e codec.PacketEncoder) {
-	app.packetEncoder = e
+	app.packetEncoder = e //设置packet 层的序列化
 }
 
 // SetHeartbeatTime sets the heartbeat time 设置心跳
@@ -243,23 +244,23 @@ func GetMetricsReporters() []metrics.Reporter {
 
 // SetRPCServer to be used  设置rpc sercer
 func SetRPCServer(s cluster.RPCServer) {
-	app.rpcServer = s
+	app.rpcServer = s //设置rpcserver
 }
 
 // SetRPCClient to be used 设置rpc client
 func SetRPCClient(s cluster.RPCClient) {
-	app.rpcClient = s
+	app.rpcClient = s //设置rpc client
 }
 
 // SetServiceDiscoveryClient to be used 设置服务发现客户端
 func SetServiceDiscoveryClient(s cluster.ServiceDiscovery) {
-	app.serviceDiscovery = s
+	app.serviceDiscovery = s //设置服务发现客户端
 }
 
 // SetSerializer customize application serializer, which automatically Marshal
 // and UnMarshal handler payload 设置序列化
 func SetSerializer(seri serialize.Serializer) {
-	app.serializer = seri
+	app.serializer = seri //设置消息序列化
 }
 
 // GetSerializer gets the app serializer
@@ -441,6 +442,7 @@ func Start() {
 		app.running = false
 	}()
 
+	//接收行到到sg中
 	sg := make(chan os.Signal)
 	signal.Notify(sg, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGKILL, syscall.SIGTERM)
 
@@ -468,6 +470,7 @@ func listen() {
 	startupComponents()
 	// create global ticker instance, timer precision could be customized
 	// by SetTimerPrecision
+	//创建全局定时器来执行计划任务
 	timer.GlobalTicker = time.NewTicker(timer.Precision)
 
 	logger.Log.Infof("starting server %s:%s", app.server.Type, app.server.ID)
@@ -475,7 +478,9 @@ func listen() {
 	for i := 0; i < app.config.GetInt("pitaya.concurrency.handler.dispatch"); i++ {
 		go handlerService.Dispatch(i) //对管道上的消息elect 收到后使用handler进行分发处理
 	}
-	for _, acc := range app.acceptors { //遍历所有的接收器
+
+	//遍历所有的接收器 处理接收器上的连接
+	for _, acc := range app.acceptors {
 		a := acc
 		go func() { //启动一个goroutine处理接收器上的conn chan 对新来的conn新启动一个gorroutine进行消息的处理
 			for conn := range a.GetConnChan() {
@@ -513,6 +518,7 @@ func SetDictionary(dict map[string]uint16) error {
 }
 
 // AddRoute adds a routing function to a server type
+// AddRoute 添加路由策略到路由其中
 func AddRoute(
 	serverType string,
 	routingFunction router.RoutingFunc,
