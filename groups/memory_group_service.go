@@ -21,9 +21,9 @@ type MemoryGroupService struct {
 
 // MemoryGroup is the struct stored in each group key(which is the name of the group)
 type MemoryGroup struct {
-	Uids        []string
-	LastRefresh int64
-	TTL         int64
+	Uids        []string //用户uids
+	LastRefresh int64    //最后一次刷新时间
+	TTL         int64    //超时时间
 }
 
 // NewMemoryGroupService returns a new group instance
@@ -47,7 +47,7 @@ func groupTTLCleanup(conf *config.Config) {
 	}
 }
 
-// GroupCreate creates a group without TTL
+// GroupCreate creates a group without TTL 创建一个不会超时的Group
 func (c *MemoryGroupService) GroupCreate(ctx context.Context, groupName string) error {
 	memoryGroupsMu.Lock()
 	defer memoryGroupsMu.Unlock()
@@ -61,6 +61,7 @@ func (c *MemoryGroupService) GroupCreate(ctx context.Context, groupName string) 
 }
 
 // GroupCreateWithTTL creates a group with TTL, which the go routine will clean later
+// GroupCreateWithTTL 创建一个group使用当前时间作为刷新时间
 func (c *MemoryGroupService) GroupCreateWithTTL(ctx context.Context, groupName string, ttlTime time.Duration) error {
 	memoryGroupsMu.Lock()
 	defer memoryGroupsMu.Unlock()
@@ -74,6 +75,7 @@ func (c *MemoryGroupService) GroupCreateWithTTL(ctx context.Context, groupName s
 }
 
 // GroupMembers returns all member's UID in given group
+// 获取group中的所有uid
 func (c *MemoryGroupService) GroupMembers(ctx context.Context, groupName string) ([]string, error) {
 	memoryGroupsMu.Lock()
 	defer memoryGroupsMu.Unlock()
@@ -134,8 +136,8 @@ func (c *MemoryGroupService) GroupRemoveMember(ctx context.Context, groupName, u
 	}
 	index, contains := elementIndex(mg.Uids, uid)
 	if contains {
-		mg.Uids[index] = mg.Uids[len(mg.Uids)-1]
-		mg.Uids = mg.Uids[:len(mg.Uids)-1]
+		mg.Uids[index] = mg.Uids[len(mg.Uids)-1] //将最后一个移动到要删除的位子
+		mg.Uids = mg.Uids[:len(mg.Uids)-1]       //然后使用取出切片方法删除掉最后一个
 		memoryGroups[groupName] = mg
 		return nil
 	}

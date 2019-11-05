@@ -35,7 +35,7 @@ import (
 
 var (
 	groupServiceInstance groups.GroupService
-	groupsOnce           sync.Once
+	groupsOnce           sync.Once //取保Do方法执行一次
 )
 
 // InitGroups should be called once at the beginning of the application to setup the service type that will manage the groups
