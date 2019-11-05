@@ -32,6 +32,7 @@ func getChannel(serverType, serverID string) string {
 }
 
 func setupNatsConn(connectString string, appDieChan chan bool, options ...nats.Option) (*nats.Conn, error) {
+	//nats监听断开连接 重新连接 关闭连接事件
 	natsOptions := append(
 		options,
 		nats.DisconnectHandler(func(_ *nats.Conn) {
@@ -54,6 +55,7 @@ func setupNatsConn(connectString string, appDieChan chan bool, options ...nats.O
 		}),
 	)
 
+	//nats开始连接
 	nc, err := nats.Connect(connectString, natsOptions...)
 	if err != nil {
 		return nil, err

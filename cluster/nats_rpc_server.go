@@ -40,10 +40,10 @@ import (
 
 // NatsRPCServer struct
 type NatsRPCServer struct {
-	connString             string
-	maxReconnectionRetries int
-	server                 *Server
-	conn                   *nats.Conn
+	connString             string     //nats连接地址
+	maxReconnectionRetries int        //最大重连次数
+	server                 *Server    //本地服务器
+	conn                   *nats.Conn //nats conn
 	pushBufferSize         int
 	messagesBufferSize     int
 	config                 *config.Config
@@ -152,6 +152,7 @@ func (ns *NatsRPCServer) subscribeToBindingsChannel() error {
 	return err
 }
 
+// subscribeToUserKickChannel 订阅提出玩家的主题
 func (ns *NatsRPCServer) subscribeToUserKickChannel(uid string, svType string) (*nats.Subscription, error) {
 	sub, err := ns.conn.Subscribe(GetUserKickTopic(uid, svType), func(msg *nats.Msg) {
 		kick := &protos.KickMsg{}
@@ -164,6 +165,7 @@ func (ns *NatsRPCServer) subscribeToUserKickChannel(uid string, svType string) (
 	return sub, err
 }
 
+// subscribeToUserKickChannel 订阅推送到玩家的主题
 func (ns *NatsRPCServer) subscribeToUserMessages(uid string, svType string) (*nats.Subscription, error) {
 	sub, err := ns.conn.Subscribe(GetUserMessagesTopic(uid, svType), func(msg *nats.Msg) {
 		push := &protos.Push{}
@@ -179,6 +181,7 @@ func (ns *NatsRPCServer) subscribeToUserMessages(uid string, svType string) (*na
 	return sub, nil
 }
 
+// handleMessages 处理主题chan上的消息
 func (ns *NatsRPCServer) handleMessages() {
 	defer (func() {
 		ns.conn.Close()
@@ -189,7 +192,7 @@ func (ns *NatsRPCServer) handleMessages() {
 	maxPending := float64(0)
 	for {
 		select {
-		case msg := <-ns.subChan:
+		case msg := <-ns.subChan: //主题时间通道
 			ns.reportMetrics()
 			dropped, err := ns.sub.Dropped()
 			if err != nil {
@@ -211,7 +214,7 @@ func (ns *NatsRPCServer) handleMessages() {
 				continue
 			}
 			req.Msg.Reply = msg.Reply
-			ns.unhandledReqCh <- req
+			ns.unhandledReqCh <- req //消息封装为req发送给req chan
 		case <-ns.stopChan:
 			return
 		}
@@ -249,6 +252,7 @@ func (ns *NatsRPCServer) marshalResponse(res *protos.Response) ([]byte, error) {
 	return p, err
 }
 
+// processMessages 处理nats连接上的消息 进行rpc调用
 func (ns *NatsRPCServer) processMessages(threadID int) {
 	for req := range ns.GetUnhandledRequestsChannel() {
 		logger.Log.Debugf("(%d) processing message %v", threadID, req.GetMsg().GetId())
@@ -266,7 +270,7 @@ func (ns *NatsRPCServer) processMessages(threadID int) {
 			response, _ = ns.pitayaServer.Call(ctx, req)
 		}
 		p, err := ns.marshalResponse(response)
-		err = ns.conn.Publish(reply, p)
+		err = ns.conn.Publish(reply, p) //给定的主体上推送消息
 		if err != nil {
 			logger.Log.Error("error sending message response")
 		}
@@ -308,12 +312,16 @@ func (ns *NatsRPCServer) processKick() {
 // Init inits nats rpc server
 func (ns *NatsRPCServer) Init() error {
 	// TODO should we have concurrency here? it feels like we should
+	//处理主题事件发送过来的消息
 	go ns.handleMessages()
+
+	//监听nats的连接 断开 重连时间并且开始连接nats
 	conn, err := setupNatsConn(ns.connString, ns.appDieChan, nats.MaxReconnects(ns.maxReconnectionRetries))
 	if err != nil {
 		return err
 	}
 	ns.conn = conn
+	//订阅主题
 	if ns.sub, err = ns.subscribe(getChannel(ns.server.Type, ns.server.ID)); err != nil {
 		return err
 	}
@@ -349,6 +357,7 @@ func (ns *NatsRPCServer) Shutdown() error {
 	return nil
 }
 
+// subscribe 订阅主题使用 chan收消息
 func (ns *NatsRPCServer) subscribe(topic string) (*nats.Subscription, error) {
 	return ns.conn.ChanSubscribe(topic, ns.subChan)
 }

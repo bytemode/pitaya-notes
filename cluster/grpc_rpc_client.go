@@ -45,13 +45,13 @@ import (
 // GRPCClient rpc server struct
 type GRPCClient struct {
 	bindingStorage   interfaces.BindingStorage
-	clientMap        sync.Map
-	dialTimeout      time.Duration
+	clientMap        sync.Map      //grpc客户端信息保存
+	dialTimeout      time.Duration //连接超时
 	infoRetriever    InfoRetriever
 	lazy             bool
 	metricsReporters []metrics.Reporter
-	reqTimeout       time.Duration
-	server           *Server
+	reqTimeout       time.Duration //请求超时
+	server           *Server       //本地服务器
 }
 
 // NewGRPCClient returns a new instance of GRPCClient
@@ -75,8 +75,8 @@ func NewGRPCClient(
 
 type grpcClient struct {
 	address   string
-	cli       protos.PitayaClient
-	conn      *grpc.ClientConn
+	cli       protos.PitayaClient //grpc client rpc调用使用的
+	conn      *grpc.ClientConn    //grpc网络连接客户端
 	connected bool
 	lock      sync.Mutex
 }
@@ -134,6 +134,7 @@ func (gs *GRPCClient) Call(
 		defer metrics.ReportTimingFromCtx(ctxT, gs.metricsReporters, "rpc", err)
 	}
 
+	//grpc call远程过程调用 且返回
 	res, err := c.(*grpcClient).call(ctxT, &req)
 	if err != nil {
 		return nil, err
@@ -308,7 +309,7 @@ func (gc *grpcClient) connect() error {
 	if gc.connected {
 		return nil
 	}
-
+	//连接grpc server
 	conn, err := grpc.Dial(
 		gc.address,
 		grpc.WithInsecure(),
@@ -316,6 +317,7 @@ func (gc *grpcClient) connect() error {
 	if err != nil {
 		return err
 	}
+	//生成grpc 服务客户端
 	c := protos.NewPitayaClient(conn)
 	gc.cli = c
 	gc.conn = conn

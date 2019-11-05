@@ -128,7 +128,7 @@ func (ns *NatsRPCClient) SendKick(userID string, serverType string, kick *protos
 	return ns.Send(topic, msg)
 }
 
-// Call calls a method remotelly
+// Call calls a method remotelly 远程调用方法
 func (ns *NatsRPCClient) Call(
 	ctx context.Context,
 	rpcType protos.RPCType,
@@ -174,6 +174,7 @@ func (ns *NatsRPCClient) Call(
 			metrics.ReportTimingFromCtx(ctx, ns.metricsReporters, typ, err)
 		}()
 	}
+	// nats Request 模式
 	m, err = ns.conn.Request(getChannel(server.Type, server.ID), marshalledData, ns.reqTimeout)
 	if err != nil {
 		return nil, err
@@ -202,6 +203,7 @@ func (ns *NatsRPCClient) Call(
 // Init inits nats rpc client
 func (ns *NatsRPCClient) Init() error {
 	ns.running = true
+	//连接nats server
 	conn, err := setupNatsConn(ns.connString, ns.appDieChan, nats.MaxReconnects(ns.maxReconnectionRetries))
 	if err != nil {
 		return err
