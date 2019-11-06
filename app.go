@@ -117,11 +117,11 @@ var (
 
 // Configure configures the app
 func Configure(
-	isFrontend bool,
-	serverType string,
-	serverMode ServerMode,
-	serverMetadata map[string]string,
-	cfgs ...*viper.Viper,
+	isFrontend bool, //是否前端服务器
+	serverType string, //服务器类型
+	serverMode ServerMode, //服务器模式
+	serverMetadata map[string]string, //服务器元数据
+	cfgs ...*viper.Viper, //viper配置
 ) {
 	if app.configured {
 		logger.Log.Warn("pitaya configured twice!")
@@ -422,8 +422,8 @@ func Start() {
 		app.packetEncoder,
 		app.serializer,
 		app.heartbeat,
-		app.config.GetInt("pitaya.buffer.agent.messages"),
-		app.config.GetInt("pitaya.buffer.handler.localprocess"),
+		app.config.GetInt("pitaya.buffer.agent.messages"),       //agent 发送消息chan的大小 发送个客户单的写消息
+		app.config.GetInt("pitaya.buffer.handler.localprocess"), //读取clinet发来消息的大小
 		app.config.GetInt("pitaya.buffer.handler.remoteprocess"),
 		app.server,
 		remoteService,

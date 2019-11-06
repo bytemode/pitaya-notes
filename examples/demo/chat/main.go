@@ -104,19 +104,24 @@ func (r *Room) Message(ctx context.Context, msg *UserMessage) {
 func main() {
 	defer pitaya.Shutdown()
 
+	//使用Json Serializer
 	s := json.NewSerializer()
 	conf := configApp()
-
+	//消息序列化
 	pitaya.SetSerializer(s)
+	//创建一个基于内存的GroupService进行用户分组历
 	gsi := groups.NewMemoryGroupService(config.NewConfig(conf))
 	pitaya.InitGroups(gsi)
+	//创建一个Group
 	err := pitaya.GroupCreate(context.Background(), "room")
 	if err != nil {
 		panic(err)
 	}
 
-	// rewrite component and handler name
+	// rewrite component and handler name 创建一个组件用来handler消息
 	room := NewRoom()
+
+	//组件注册 添加组件到本地的组件列表中 组件在启动之后会注册到handlerService中
 	pitaya.Register(room,
 		component.WithName("room"),
 		component.WithNameFunc(strings.ToLower),
@@ -124,23 +129,27 @@ func main() {
 
 	log.SetFlags(log.LstdFlags | log.Llongfile)
 
+	//启动web服务器
 	http.Handle("/web/", http.StripPrefix("/web/", http.FileServer(http.Dir("web"))))
-
 	go http.ListenAndServe(":3251", nil)
 
+	//创建websocket 的acceptor放入到pitaya中
 	ws := acceptor.NewWSAcceptor(":3250")
 	pitaya.AddAcceptor(ws)
 
+	//是前端服务器  服务器类型 chat  集群模式 元数据为{}  vipper配置为conf
 	pitaya.Configure(true, "chat", pitaya.Cluster, map[string]string{}, conf)
+
+	//启动服务器
 	pitaya.Start()
 }
 
 func configApp() *viper.Viper {
 	conf := viper.New()
-	conf.SetEnvPrefix("chat") // allows using env vars in the CHAT_PITAYA_ format
-	conf.SetDefault("pitaya.buffer.handler.localprocess", 15)
-	conf.Set("pitaya.heartbeat.interval", "15s")
-	conf.Set("pitaya.buffer.agent.messages", 32)
-	conf.Set("pitaya.handler.messages.compression", false)
+	conf.SetEnvPrefix("chat")                                 // allows using env vars in the CHAT_PITAYA_ format
+	conf.SetDefault("pitaya.buffer.handler.localprocess", 15) //acceptor上管道上传来消息写入待处理管道的大小 接收客户端消息的大小
+	conf.Set("pitaya.heartbeat.interval", "15s")              //心跳间隔
+	conf.Set("pitaya.buffer.agent.messages", 32)              //agent上write消息的chan大小 发送个client的消息chan的大小
+	conf.Set("pitaya.handler.messages.compression", false)    //消息不压缩
 	return conf
 }
