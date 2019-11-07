@@ -32,20 +32,20 @@ type (
 	//Handler represents a message.Message's handler's meta information.
 	//Component中Handler方法的反射信息
 	Handler struct {
-		Receiver    reflect.Value  // receiver of method 反射获变量的值  reflect.ValueOf(xxx)
-		Method      reflect.Method // method stub
-		Type        reflect.Type   // low-level type of method 反射变量的类型 reflect.TypeOf(xxx)
-		IsRawArg    bool           // whether the data need to serialize 是否未经序列化的消息
-		MessageType message.Type   // handler allowed message type (either request or notify) server接收的请求的客户端消息类型 request notify
+		Receiver    reflect.Value  // component的信息
+		Method      reflect.Method // method stub 方法信息
+		Type        reflect.Type   // 反射变量的类型 reflect.TypeOf(xxx)
+		IsRawArg    bool           // 是否未经序列化的消息
+		MessageType message.Type   // server接收的请求的客户端消息类型 request notify
 	}
 
 	//Remote represents remote's meta information.
 	//远程组件的Handler的方法反射信息
 	Remote struct {
-		Receiver reflect.Value  // receiver of method
-		Method   reflect.Method // method stub
-		Type     reflect.Type   // low-level type of method
-		HasArgs  bool           // if remote has no args we won't try to serialize received data into arguments
+		Receiver reflect.Value  // component的信息
+		Method   reflect.Method //  rpc方法
+		Type     reflect.Type   //  rpc参数的类型化信息
+		HasArgs  bool           //
 	}
 
 	// Service implements a specific service, some of it's methods will be
@@ -120,7 +120,7 @@ func (s *Service) ExtractHandler() error {
 	}
 
 	for i := range s.Handlers {
-		s.Handlers[i].Receiver = s.Receiver //receiver机方法的绑定的对象（调用者）
+		s.Handlers[i].Receiver = s.Receiver //receiver机方法的绑定的对象（调用者component的信息）
 	}
 
 	return nil
@@ -158,7 +158,7 @@ func (s *Service) ExtractRemote() error {
 	}
 
 	for i := range s.Remotes {
-		s.Remotes[i].Receiver = s.Receiver
+		s.Remotes[i].Receiver = s.Receiver //component的信息
 	}
 	return nil
 }
