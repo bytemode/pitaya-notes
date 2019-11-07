@@ -95,7 +95,7 @@ func (r *Room) Join(ctx context.Context, msg []byte) (*JoinResponse, error) {
 
 // Message sync last message to all members
 func (r *Room) Message(ctx context.Context, msg *UserMessage) {
-	err := pitaya.GroupBroadcast(ctx, "chat", "room", "onMessage", msg)
+	err := pitaya.GroupBroadcast(ctx, "chat", "room", "onMessage", msg) //前端服务器（chat） groupname(room) 路由名（onMessage）
 	if err != nil {
 		fmt.Println("error broadcasting message", err)
 	}

@@ -30,6 +30,7 @@ import (
 )
 
 // SendPushToUsers sends a message to the given list of users
+// SendPushToUsers 发送一个消息到所有的用户 通过session或者rcp调用主要依赖本地server是否制定的frontendType
 func SendPushToUsers(route string, v interface{}, uids []string, frontendType string) ([]string, error) {
 	data, err := util.SerializeOrRaw(app.serializer, v)
 	if err != nil {
