@@ -31,8 +31,8 @@ var (
 )
 
 type regComp struct {
-	comp component.Component
-	opts []component.Option
+	comp component.Component //组件主要是用来处理handler
+	opts []component.Option  //Option函数切片 func(options *options)
 }
 
 // Register register a component with options

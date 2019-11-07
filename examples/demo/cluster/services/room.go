@@ -72,13 +72,16 @@ func NewRoom() *Room {
 
 // Init runs on service initialization
 func (r *Room) Init() {
+	//使用默认值创建一个基于内存的GroupService
 	gsi := groups.NewMemoryGroupService(config.NewConfig())
 	pitaya.InitGroups(gsi)
+	//创建room Group
 	pitaya.GroupCreate(context.Background(), "room")
 }
 
 // AfterInit component lifetime callback
 func (r *Room) AfterInit() {
+	//定时输出玩家数量
 	r.timer = pitaya.NewTimer(time.Minute, func() {
 		count, err := pitaya.GroupCountMembers(context.Background(), "room")
 		println("UserCount: Time=>", time.Now().String(), "Count=>", count, "Error=>", err)
@@ -130,12 +133,15 @@ func (r *Room) SetSessionData(ctx context.Context, data *SessionData) ([]byte, e
 func (r *Room) Join(ctx context.Context) (*JoinResponse, error) {
 	logger := pitaya.GetDefaultLoggerFromCtx(ctx)
 	s := pitaya.GetSessionFromCtx(ctx)
+
+	//吧session中的ui放入 room group中
 	err := pitaya.GroupAddMember(ctx, "room", s.UID())
 	if err != nil {
 		logger.Error("Failed to join room")
 		logger.Error(err)
 		return nil, err
 	}
+	//获取所有room group中的所有成员 推送给当前用户
 	members, err := pitaya.GroupMembers(ctx, "room")
 	if err != nil {
 		logger.Error("Failed to get members")
@@ -143,6 +149,8 @@ func (r *Room) Join(ctx context.Context) (*JoinResponse, error) {
 		return nil, err
 	}
 	s.Push("onMembers", &AllMembers{Members: members})
+
+	//广播到前端服务器 connector room group有新用户加入 的onNewUser方法
 	err = pitaya.GroupBroadcast(ctx, "connector", "room", "onNewUser", &NewUser{Content: fmt.Sprintf("New user: %d", s.ID())})
 	if err != nil {
 		logger.Error("Failed to broadcast onNewUser")

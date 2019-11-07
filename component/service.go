@@ -44,8 +44,8 @@ type (
 	Remote struct {
 		Receiver reflect.Value  // receiver of method
 		Method   reflect.Method // method stub
-		HasArgs  bool           // if remote has no args we won't try to serialize received data into arguments
 		Type     reflect.Type   // low-level type of method
+		HasArgs  bool           // if remote has no args we won't try to serialize received data into arguments
 	}
 
 	// Service implements a specific service, some of it's methods will be
@@ -53,25 +53,26 @@ type (
 	//以组件为单位的Component的handler的反射信息的记录 一个Component 一个Service
 	//一个组件的反射信息和所有的Handler的反射信息
 	Service struct {
-		Name     string              // name of service
-		Type     reflect.Type        // type of the receiver
-		Receiver reflect.Value       // receiver of methods for the service
-		Handlers map[string]*Handler // registered methods 所有Handler信息 使用路由和handler的map
-		Remotes  map[string]*Remote  // registered remote methods
+		Name     string              // name of service 服务的名字组件名字
+		Type     reflect.Type        // type of the receiver  组件的类型信息
+		Receiver reflect.Value       // receiver of methods for the service 组件的值信息
+		Handlers map[string]*Handler // registered methods 所有本地方法Handler信息 和名字的map
+		Remotes  map[string]*Remote  // registered remote methods 所有远程方法的方法名和Remote的map
 		Options  options             // options
 	}
 )
 
 // NewService creates a new service
 func NewService(comp Component, opts []Option) *Service {
+	//记录下组件的TypeOf和ValueOf
 	s := &Service{
 		Type:     reflect.TypeOf(comp),
 		Receiver: reflect.ValueOf(comp),
 	}
 
-	// apply options
+	// apply options 使用选项处理函数Option对选项Options进行处理 例如withname 是给s.name赋值
 	for i := range opts {
-		opt := opts[i]
+		opt := opts[i] //Option func(options *options)
 		opt(&s.Options)
 	}
 	if name := s.Options.name; name != "" {
@@ -92,6 +93,7 @@ func NewService(comp Component, opts []Option) *Service {
 // - zero or two outputs
 // - the first output is [] or a pointer
 // - the second output is an error
+// 将组件中符合Handler格式的方法信息封装为Handler同时和名字对应存储为map形式 放入Handlers结构
 func (s *Service) ExtractHandler() error {
 	typeName := reflect.Indirect(s.Receiver).Type().Name()
 	if typeName == "" {
@@ -102,8 +104,8 @@ func (s *Service) ExtractHandler() error {
 	}
 
 	// Install the methods
-	//遍历S.Type的method封装为Handler
-	s.Handlers = suitableHandlerMethods(s.Type, s.Options.nameFunc)
+	//遍历S.Type的method将符合Handler类型的方法的信息封装为封装为Handler同时和名字对应存储为map
+	s.Handlers = suitableHandlerMethods(s.Type, s.Options.nameFunc) //s.Options.nameFunc用来处理方法名 转化大小写等
 
 	if len(s.Handlers) == 0 {
 		str := ""
