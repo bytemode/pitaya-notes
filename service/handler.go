@@ -50,7 +50,7 @@ import (
 )
 
 var (
-	handlers    = make(map[string]*component.Handler) // all handler method 所有的组件中的Handler和名字的map
+	handlers    = make(map[string]*component.Handler) // 所有的组件中的Handler和名字的map
 	handlerType = "handler"
 )
 
@@ -67,7 +67,7 @@ type (
 		remoteService      *RemoteService
 		serializer         serialize.Serializer          // message serializer
 		server             *cluster.Server               // server obj
-		services           map[string]*component.Service // all registered service 管理Component的handler的反射信息
+		services           map[string]*component.Service // 所有注册的组件的服务信息, Service存储着component的反射信息Handler信息
 		messageEncoder     message.Encoder
 		metricsReporters   []metrics.Reporter
 	}
@@ -147,18 +147,22 @@ func (h *HandlerService) Dispatch(thread int) {
 //将组件Component中的复合Handler的方法遍历处理按照路由名字生成一个map放入HandleServices
 // 一个组件生成一个Service存储组件本身和组件中handler的反射信息 同时将组件名字和service关联 且记录所有的路由和Handle的反射信息
 func (h *HandlerService) Register(comp component.Component, opts []component.Option) error {
+	//内部创还能一个Service存储component反射信息，和处理service选项信息的函数
 	s := component.NewService(comp, opts)
 
 	if _, ok := h.services[s.Name]; ok {
 		return fmt.Errorf("handler: service already defined: %s", s.Name)
 	}
 
+	// 将组件方法进行遍历取出符合条件的本地方法（消息处理方法）封装成为Handler, 并且存储为map[method-name]Handler结构
 	if err := s.ExtractHandler(); err != nil {
 		return err
 	}
 
-	// register all handlers
-	h.services[s.Name] = s //一个组件的Handler生成反射信息记录在Service 通过组件的名字进行映射记录
+	//一个组件的Handler生成反射信息记录在Service 通过组件的名字进行映射记录
+	h.services[s.Name] = s
+
+	//注册所有的Handler map[service-name.memthod-name]Handler的形式
 	for name, handler := range s.Handlers {
 		handlers[fmt.Sprintf("%s.%s", s.Name, name)] = handler //组件名.方法名 和handler（方法的反射信息）的映射
 	}

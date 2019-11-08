@@ -482,7 +482,7 @@ func listen() {
 	//遍历所有的接收器 处理接收器上的连接
 	for _, acc := range app.acceptors {
 		a := acc
-		go func() { //启动一个goroutine处理接收器上的conn chan 对新来的conn新启动一个gorroutine进行消息的处理
+		go func() { //启动一个goroutine处理接收器上的conn chn 对新来的conn新启动一个gorroutine进行消息的处理
 			for conn := range a.GetConnChan() {
 				go handlerService.Handle(conn) //创建一个agent然后读取数据成成消息写入消息管道
 			}

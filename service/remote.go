@@ -87,6 +87,7 @@ func NewRemoteService(
 
 var remotes = make(map[string]*component.Remote) // all remote method   所有远程方法调用的反射信息
 
+// 处理rpc调用根据消息类型进行回复，此处可以是client发送给后端服务器的消息 前端服务器进行的一个转发 转发使用rpc调用
 func (r *RemoteService) remoteProcess(
 	ctx context.Context,
 	server *cluster.Server,
@@ -237,20 +238,24 @@ func (r *RemoteService) RPC(ctx context.Context, serverID string, route *route.R
 	return nil
 }
 
-// Register registers components 注册所有的组件保存Handler的反射信息到Service
+// Register registers components
 func (r *RemoteService) Register(comp component.Component, opts []component.Option) error {
+	//组件生成Service
 	s := component.NewService(comp, opts)
 
 	if _, ok := r.services[s.Name]; ok {
 		return fmt.Errorf("remote: service already defined: %s", s.Name)
 	}
 
+	//遍历组件方法取出符合rpc调用的方法封装为Remote 并且存储为method-name:Remote的map
 	if err := s.ExtractRemote(); err != nil {
 		return err
 	}
 
+	//保存Service
 	r.services[s.Name] = s
 	// register all remotes
+	// 保存所有的Remote
 	for name, remote := range s.Remotes {
 		remotes[fmt.Sprintf("%s.%s", s.Name, name)] = remote
 	}
@@ -276,9 +281,9 @@ func processRemoteMessage(ctx context.Context, req *protos.Request, r *RemoteSer
 
 	switch {
 	case req.Type == protos.RPCType_Sys:
-		return r.handleRPCSys(ctx, req, rt) //系统rpc调用
+		return r.handleRPCSys(ctx, req, rt) //系统rpc调用 本地handler
 	case req.Type == protos.RPCType_User:
-		return r.handleRPCUser(ctx, req, rt) //用户rpc
+		return r.handleRPCUser(ctx, req, rt) //用户rpc 远程rpc
 	default:
 		return &protos.Response{
 			Error: &protos.Error{
@@ -371,7 +376,7 @@ func (r *RemoteService) handleRPCUser(ctx context.Context, req *protos.Request, 
 	return response
 }
 
-//handleRPCSys系统rpc
+//handleRPCSys系统rpc 调用的是本地消息
 func (r *RemoteService) handleRPCSys(ctx context.Context, req *protos.Request, rt *route.Route) *protos.Response {
 	reply := req.GetMsg().GetReply()
 	response := &protos.Response{}

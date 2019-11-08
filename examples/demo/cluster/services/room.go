@@ -100,7 +100,7 @@ func (r *Room) Entry(ctx context.Context, msg []byte) (*JoinResponse, error) {
 		logger.Error("Failed to bind session")
 		logger.Error(err)
 		return nil, pitaya.Error(err, "RH-000", map[string]string{"failed": "bind"})
-	}
+	}==
 	return &JoinResponse{Result: "ok"}, nil
 }
 
