@@ -34,7 +34,7 @@ type (
 	Handler struct {
 		Receiver    reflect.Value  // component的信息
 		Method      reflect.Method // method stub 方法信息
-		Type        reflect.Type   // 反射变量的类型 reflect.TypeOf(xxx)
+		Type        reflect.Type   // Handler方法的第二个输入参数的类型 消息类型信息
 		IsRawArg    bool           // 是否未经序列化的消息
 		MessageType message.Type   // server接收的请求的客户端消息类型 request notify
 	}
@@ -44,7 +44,7 @@ type (
 	Remote struct {
 		Receiver reflect.Value  // component的信息
 		Method   reflect.Method //  rpc方法
-		Type     reflect.Type   //  rpc参数的类型化信息
+		Type     reflect.Type   //  rpc方法的第二个输入参数的类型 消息类型信息
 		HasArgs  bool           //
 	}
 

@@ -263,7 +263,7 @@ func (r *RemoteService) Register(comp component.Component, opts []component.Opti
 	return nil
 }
 
-//processRemoteMessage 处理远程消息
+//processRemoteMessage 处理远程消息 sys和user rpc
 func processRemoteMessage(ctx context.Context, req *protos.Request, r *RemoteService) *protos.Response {
 	rt, err := route.Decode(req.GetMsg().GetRoute())
 	if err != nil {
@@ -281,9 +281,9 @@ func processRemoteMessage(ctx context.Context, req *protos.Request, r *RemoteSer
 
 	switch {
 	case req.Type == protos.RPCType_Sys:
-		return r.handleRPCSys(ctx, req, rt) //系统rpc调用 本地handler
+		return r.handleRPCSys(ctx, req, rt) //系统rpc调用 本地handlers中的handler进行消息处理
 	case req.Type == protos.RPCType_User:
-		return r.handleRPCUser(ctx, req, rt) //用户rpc 远程rpc
+		return r.handleRPCUser(ctx, req, rt) //用户rpc 使用remtoes中的remote进行消息处理
 	default:
 		return &protos.Response{
 			Error: &protos.Error{
