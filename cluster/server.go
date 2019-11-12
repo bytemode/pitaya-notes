@@ -32,7 +32,7 @@ type Server struct {
 	ID       string            `json:"id"` //成员变量标签 序列化作为键值
 	Type     string            `json:"type"`
 	Metadata map[string]string `json:"metadata"` //记录一些数据
-	Frontend bool              `json:"frontend"`
+	Frontend bool              `json:"frontend"` //是否前端服务器
 	Hostname string            `json:"hostname"`
 }
 

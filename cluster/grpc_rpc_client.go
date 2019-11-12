@@ -43,15 +43,16 @@ import (
 )
 
 // GRPCClient rpc server struct
+// GRPCClient 管理本机上连接到的所有的服务器的grpcClient
 type GRPCClient struct {
 	bindingStorage   interfaces.BindingStorage
-	clientMap        sync.Map      //grpc客户端信息保存
+	clientMap        sync.Map      //并发map 存储serverid和连接其server的grpcClient信息
 	dialTimeout      time.Duration //连接超时
 	infoRetriever    InfoRetriever
 	lazy             bool
-	metricsReporters []metrics.Reporter
 	reqTimeout       time.Duration //请求超时
 	server           *Server       //本地服务器
+	metricsReporters []metrics.Reporter
 }
 
 // NewGRPCClient returns a new instance of GRPCClient
@@ -75,7 +76,7 @@ func NewGRPCClient(
 
 type grpcClient struct {
 	address   string
-	cli       protos.PitayaClient //grpc client rpc调用使用的
+	cli       protos.PitayaClient //grpc生成的client sub
 	conn      *grpc.ClientConn    //grpc网络连接客户端
 	connected bool
 	lock      sync.Mutex
@@ -92,16 +93,16 @@ func (gs *GRPCClient) configure(cfg *config.Config) {
 	gs.reqTimeout = cfg.GetDuration("pitaya.cluster.rpc.client.grpc.requesttimeout")
 }
 
-// Call makes a RPC Call
+// Call 查找连接到server的 grpc client 然后构建protos.Request参数进行 rpc call调用返回 protos.Response
 func (gs *GRPCClient) Call(
-	ctx context.Context,
-	rpcType protos.RPCType,
-	route *route.Route,
-	session *session.Session,
-	msg *message.Message,
-	server *Server,
+	ctx context.Context, //上下文
+	rpcType protos.RPCType, //rpc类型
+	route *route.Route, //路由信息
+	session *session.Session, //session
+	msg *message.Message, //消息
+	server *Server, //服务器
 ) (*protos.Response, error) {
-	c, ok := gs.clientMap.Load(server.ID)
+	c, ok := gs.clientMap.Load(server.ID) //读取
 	if !ok {
 		return nil, constants.ErrNoConnectionToServer
 	}
@@ -119,6 +120,7 @@ func (gs *GRPCClient) Call(
 	ctx = tracing.StartSpan(ctx, "RPC Call", tags, parent)
 	defer tracing.FinishSpan(ctx, err)
 
+	//构建rpc调用的请求protos.Request
 	req, err := buildRequest(ctx, rpcType, route, session, msg, gs.server)
 	if err != nil {
 		return nil, err
@@ -134,7 +136,7 @@ func (gs *GRPCClient) Call(
 		defer metrics.ReportTimingFromCtx(ctxT, gs.metricsReporters, "rpc", err)
 	}
 
-	//grpc call远程过程调用 且返回
+	//grpc call远程过程调用 且返回protos.Response
 	res, err := c.(*grpcClient).call(ctxT, &req)
 	if err != nil {
 		return nil, err
@@ -180,6 +182,7 @@ func (gs *GRPCClient) BroadcastSessionBind(uid string) error {
 }
 
 // SendKick sends a kick to an user
+// SendKick 给用户所在的前端服务器发送一个踢人消息
 func (gs *GRPCClient) SendKick(userID string, serverType string, kick *protos.KickMsg) error {
 	var svID string
 	var err error
@@ -203,7 +206,7 @@ func (gs *GRPCClient) SendKick(userID string, serverType string, kick *protos.Ki
 }
 
 // SendPush sends a message to an user, if you dont know the serverID that the user is connected to, you need to set a BindingStorage when creating the client
-// TODO: Jaeger?
+// 使用用户所在的前端服务器推送给用户一条消息
 func (gs *GRPCClient) SendPush(userID string, frontendSv *Server, push *protos.Push) error {
 	var svID string
 	var err error
@@ -228,6 +231,7 @@ func (gs *GRPCClient) SendPush(userID string, frontendSv *Server, push *protos.P
 }
 
 // AddServer is called when a new server is discovered
+// 当有新的服务器加入的时候新建一个grpcclient连接他，并且保存serverid和grpcclient
 func (gs *GRPCClient) AddServer(sv *Server) {
 	var host, port, portKey string
 	var ok bool
@@ -243,6 +247,7 @@ func (gs *GRPCClient) AddServer(sv *Server) {
 		return
 	}
 
+	//构建一个新的grpcClient进行连接
 	address := fmt.Sprintf("%s:%s", host, port)
 	client := &grpcClient{address: address}
 	if !gs.lazy {
@@ -250,11 +255,13 @@ func (gs *GRPCClient) AddServer(sv *Server) {
 			logger.Log.Errorf("[grpc client] unable to connect to server %s at %s: %v", sv.ID, address, err)
 		}
 	}
+	//新建的grpcclient存入map 和 新加入来的serverid对应性
 	gs.clientMap.Store(sv.ID, client)
 	logger.Log.Debugf("[grpc client] added server %s at %s", sv.ID, address)
 }
 
 // RemoveServer is called when a server is removed
+// 移除服务器的时候断开grpc连接 删除相应的存储
 func (gs *GRPCClient) RemoveServer(sv *Server) {
 	if c, ok := gs.clientMap.Load(sv.ID); ok {
 		c.(*grpcClient).disconnect()
@@ -303,6 +310,9 @@ func (gs *GRPCClient) getServerHost(sv *Server) (host, portKey string) {
 	return externalHost, constants.GRPCExternalPortKey
 }
 
+//--------------------grpcClient--------------------------------
+
+//connect连接指定server上的grpc server
 func (gc *grpcClient) connect() error {
 	gc.lock.Lock()
 	defer gc.lock.Unlock()
@@ -317,7 +327,8 @@ func (gc *grpcClient) connect() error {
 	if err != nil {
 		return err
 	}
-	//生成grpc 服务客户端
+
+	//生成grpc客户端 传入gprc conn用来做 grpc方法调用
 	c := protos.NewPitayaClient(conn)
 	gc.cli = c
 	gc.conn = conn
@@ -325,6 +336,7 @@ func (gc *grpcClient) connect() error {
 	return nil
 }
 
+//disconnect 断开连接
 func (gc *grpcClient) disconnect() {
 	gc.lock.Lock()
 	if gc.connected {
@@ -334,6 +346,7 @@ func (gc *grpcClient) disconnect() {
 	gc.lock.Unlock()
 }
 
+// pushToUser  call  sessionBindRemote sendKick 使用protos.PitayaClient完成调用
 func (gc *grpcClient) pushToUser(ctx context.Context, push *protos.Push) error {
 	if !gc.connected {
 		if err := gc.connect(); err != nil {
