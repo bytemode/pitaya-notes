@@ -33,11 +33,11 @@ import (
 
 // GRPCServer rpc server struct
 type GRPCServer struct {
-	server           *Server
-	config           *config.Config
+	server           *Server             //本地当前服务器
+	config           *config.Config      //vipper配置
+	grpcSv           *grpc.Server        // grpc server
+	pitayaServer     protos.PitayaServer //grpc server 生成协议
 	metricsReporters []metrics.Reporter
-	grpcSv           *grpc.Server
-	pitayaServer     protos.PitayaServer
 }
 
 // NewGRPCServer constructor
@@ -51,6 +51,7 @@ func NewGRPCServer(config *config.Config, server *Server, metricsReporters []met
 }
 
 // Init inits grpc rpc server
+// 在grpc中注册我们的服务实现并且启动监听开始grpc服务
 func (gs *GRPCServer) Init() error {
 	port := gs.config.GetInt("pitaya.cluster.rpc.server.grpc.port")
 	//监听端口
@@ -61,7 +62,7 @@ func (gs *GRPCServer) Init() error {
 	//实例化grpc Server
 	gs.grpcSv = grpc.NewServer()
 
-	//在 gRPC 服务器注册我们的服务实现 gs.pitayaServer
+	//在 gRPC 服务器注册我们的服务实现 gs.pitayaServer === remoteService 即remoteService实现了grpc服务器的方法
 	protos.RegisterPitayaServer(gs.grpcSv, gs.pitayaServer) //gs.grpcSv.RegisterService(&_Pitaya_serviceDesc, gs.pitayaServer)
 	//启动grpc服务 启动监听 accept conn go routine处理连接请求
 	go gs.grpcSv.Serve(lis)
