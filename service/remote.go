@@ -203,10 +203,12 @@ func (r *RemoteService) DoRPC(ctx context.Context, serverID string, route *route
 		return nil, constants.ErrServerNotFound
 	}
 
+	//rpc rpc to->rpc->do prc RPCType_User
 	return r.remoteCall(ctx, target, protos.RPCType_User, route, nil, msg)
 }
 
 // RPC makes rpcs
+// RPC或者RPCTo通过doRPC调用过来的 user rpc调用
 func (r *RemoteService) RPC(ctx context.Context, serverID string, route *route.Route, reply proto.Message, arg proto.Message) error {
 	var data []byte
 	var err error
@@ -424,6 +426,7 @@ func (r *RemoteService) handleRPCSys(ctx context.Context, req *protos.Request, r
 	return response
 }
 
+// remoteCall rpc调用 路由到指定的server调用rpcClient根军server找到连接server的grprc client进行rpc调用，最终调用到remoteSevice的Call方法使用handlers或者remotes进行处理
 func (r *RemoteService) remoteCall(
 	ctx context.Context,
 	server *cluster.Server,
