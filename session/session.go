@@ -51,9 +51,9 @@ var (
 	afterBindCallbacks   = make([]func(ctx context.Context, s *Session) error, 0)
 	// SessionCloseCallbacks contains global session close callbacks
 	SessionCloseCallbacks = make([]func(s *Session), 0)
-	sessionsByUID         sync.Map
-	sessionsByID          sync.Map
-	sessionIDSvc          = newSessionIDService()
+	sessionsByUID         sync.Map                //uid 和session
+	sessionsByID          sync.Map                //存储session id和session
+	sessionIDSvc          = newSessionIDService() //生成session id的service
 	// SessionCount keeps the current number of sessions
 	SessionCount int64
 )
@@ -66,7 +66,7 @@ type HandshakeClientData struct {
 	Version     string `json:"clientVersion"`
 }
 
-//客户端发送的握手数据
+// HandshakeData 客户端发送的握手数据
 // HandshakeData represents information about the handshake sent by the client.
 // `sys` corresponds to information independent from the app and `user` information
 // that depends on the app and is customized by the user.
@@ -87,9 +87,9 @@ type Session struct {
 	entity            NetworkEntity          // low-level network entity
 	data              map[string]interface{} // session data store
 	handshakeData     *HandshakeData         // handshake data received by the client
-	encodedData       []byte                 // session data encoded as a byte array
+	encodedData       []byte                 // json.Marshal(s.data)
 	OnCloseCallbacks  []func()               //onClose callbacks
-	IsFrontend        bool                   // if session is a frontend session
+	IsFrontend        bool                   // 是否前端服务器session
 	frontendID        string                 // the id of the frontend that owns the session
 	frontendSessionID int64                  // the id of the session on the frontend server
 	Subscriptions     []*nats.Subscription   // subscription created on bind when using nats rpc server
@@ -107,14 +107,14 @@ func newSessionIDService() *sessionIDService {
 
 // SessionID returns the session id
 func (c *sessionIDService) sessionID() int64 {
-	return atomic.AddInt64(&c.sid, 1)
+	return atomic.AddInt64(&c.sid, 1) //生成sessionid
 }
 
 // New returns a new session instance
 // a NetworkEntity is a low-level network instance
 func New(entity NetworkEntity, frontend bool, UID ...string) *Session {
 	s := &Session{
-		id:               sessionIDSvc.sessionID(),
+		id:               sessionIDSvc.sessionID(), //生成sessionid
 		entity:           entity,
 		data:             make(map[string]interface{}),
 		handshakeData:    nil,
@@ -123,8 +123,8 @@ func New(entity NetworkEntity, frontend bool, UID ...string) *Session {
 		IsFrontend:       frontend,
 	}
 	if frontend {
-		sessionsByID.Store(s.id, s)
-		atomic.AddInt64(&SessionCount, 1)
+		sessionsByID.Store(s.id, s)       //存储session id和 session
+		atomic.AddInt64(&SessionCount, 1) //修改连接数量
 	}
 	if len(UID) > 0 {
 		s.uid = UID[0]
@@ -152,6 +152,7 @@ func GetSessionByID(id int64) *Session {
 
 // OnSessionBind adds a method to be called when a session is bound
 // same function cannot be added twice!
+// 添加sessionbind的回调方法
 func OnSessionBind(f func(ctx context.Context, s *Session) error) {
 	// Prevents the same function to be added twice in onSessionBind
 	sf1 := reflect.ValueOf(f)
@@ -161,6 +162,7 @@ func OnSessionBind(f func(ctx context.Context, s *Session) error) {
 			return
 		}
 	}
+
 	sessionBindCallbacks = append(sessionBindCallbacks, f)
 }
 
@@ -180,12 +182,14 @@ func OnAfterSessionBind(f func(ctx context.Context, s *Session) error) {
 // OnSessionClose adds a method that will be called when every session closes
 func OnSessionClose(f func(s *Session)) {
 	sf1 := reflect.ValueOf(f)
+
 	for _, fun := range SessionCloseCallbacks {
 		sf2 := reflect.ValueOf(fun)
 		if sf1.Pointer() == sf2.Pointer() {
 			return
 		}
 	}
+
 	SessionCloseCallbacks = append(SessionCloseCallbacks, f)
 }
 

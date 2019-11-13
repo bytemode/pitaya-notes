@@ -378,6 +378,7 @@ func Start() {
 		}
 
 		if reflect.TypeOf(app.rpcClient) == reflect.TypeOf(&cluster.GRPCClient{}) {
+			//服务器发现删除或者新增服务器的时会通知rpcclient,rpclient会新建一条链接或者删除连接和新增删除的服务器之间
 			app.serviceDiscovery.AddListener(app.rpcClient.(*cluster.GRPCClient))
 		}
 
