@@ -304,6 +304,7 @@ func main() {
 			panic(err)
 		}
 
+		//etcd存储用户连接前端服务器的serverid
 		bs := modules.NewETCDBindingStorage(pitaya.GetServer(), pitaya.GetConfig())
 		pitaya.RegisterModule(bs, "bindingsStorage")
 

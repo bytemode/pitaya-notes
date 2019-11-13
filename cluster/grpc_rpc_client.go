@@ -60,7 +60,7 @@ func NewGRPCClient(
 	config *config.Config,
 	server *Server,
 	metricsReporters []metrics.Reporter,
-	bindingStorage interfaces.BindingStorage,
+	bindingStorage interfaces.BindingStorage, //etcd上存储用户连接的前端服务器的serverid
 	infoRetriever InfoRetriever,
 ) (*GRPCClient, error) {
 	gs := &GRPCClient{
@@ -165,8 +165,10 @@ func (gs *GRPCClient) BroadcastSessionBind(uid string) error {
 	if gs.bindingStorage == nil {
 		return constants.ErrNoBindingStorageModule
 	}
+	//etcd上获取用户连接的指定服务器类型的serverid
 	fid, _ := gs.bindingStorage.GetUserFrontendID(uid, gs.server.Type)
 	if fid != "" {
+		//通过serverid拿到连接他的grpc client
 		if c, ok := gs.clientMap.Load(fid); ok {
 			msg := &protos.BindMsg{
 				Uid: uid,

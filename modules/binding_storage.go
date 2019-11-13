@@ -35,16 +35,17 @@ import (
 )
 
 // ETCDBindingStorage module that uses etcd to keep in which frontend server each user is bound
+// ETCD上存储了 bings/frontype/uid: frontserverid etcd上存储用户连接的前端服务器的serverid
 type ETCDBindingStorage struct {
 	Base
 	config          *config.Config
-	cli             *clientv3.Client
+	cli             *clientv3.Client //连接etcd的client
 	etcdEndpoints   []string
 	etcdPrefix      string
-	etcdDialTimeout time.Duration
-	leaseTTL        time.Duration
-	leaseID         clientv3.LeaseID
-	thisServer      *cluster.Server
+	etcdDialTimeout time.Duration    //etcd拨号超时
+	leaseTTL        time.Duration    //租约超时
+	leaseID         clientv3.LeaseID //租约id
+	thisServer      *cluster.Server  //本地当前服务器
 	stopChan        chan struct{}
 }
 
@@ -66,24 +67,27 @@ func (b *ETCDBindingStorage) configure() {
 	b.leaseTTL = b.config.GetDuration("pitaya.modules.bindingstorage.etcd.leasettl")
 }
 
+//bindings/frontedtype/uid 组成key
 func getUserBindingKey(uid, frontendType string) string {
 	return fmt.Sprintf("bindings/%s/%s", frontendType, uid)
 }
 
 // PutBinding puts the binding info into etcd
+// PutBinding 在etcd上存储bindings/frontedtype/uid : serverid
 func (b *ETCDBindingStorage) PutBinding(uid string) error {
 	_, err := b.cli.Put(context.Background(), getUserBindingKey(uid, b.thisServer.Type), b.thisServer.ID, clientv3.WithLease(b.leaseID))
 	return err
 }
 
+//删除etcd上的key
 func (b *ETCDBindingStorage) removeBinding(uid string) error {
 	_, err := b.cli.Delete(context.Background(), getUserBindingKey(uid, b.thisServer.Type))
 	return err
 }
 
 // GetUserFrontendID gets the id of the frontend server a user is connected to
-// TODO: should we set context here?
-// TODO: this could be way more optimized, using watcher and local caching
+// 获取用户(uid)连接的指定类型的前端服务器的id
+//
 func (b *ETCDBindingStorage) GetUserFrontendID(uid, frontendType string) (string, error) {
 	etcdRes, err := b.cli.Get(context.Background(), getUserBindingKey(uid, frontendType))
 	if err != nil {
@@ -95,6 +99,7 @@ func (b *ETCDBindingStorage) GetUserFrontendID(uid, frontendType string) (string
 	return string(etcdRes.Kvs[0].Value), nil
 }
 
+//session关闭（连接断开）则移除etcd上的uid和前端服务器id的绑定关系
 func (b *ETCDBindingStorage) setupOnSessionCloseCB() {
 	session.OnSessionClose(func(s *session.Session) {
 		if s.UID() != "" {
@@ -106,12 +111,14 @@ func (b *ETCDBindingStorage) setupOnSessionCloseCB() {
 	})
 }
 
+//session bind之后将uid和前端服务器的id放入etcd存储
 func (b *ETCDBindingStorage) setupOnAfterSessionBindCB() {
 	session.OnAfterSessionBind(func(ctx context.Context, s *session.Session) error {
 		return b.PutBinding(s.UID())
 	})
 }
 
+// watchLeaseChan 监听租约keepalive返回失败的话重新生成租约
 func (b *ETCDBindingStorage) watchLeaseChan(c <-chan *clientv3.LeaseKeepAliveResponse) {
 	for {
 		select {
@@ -136,7 +143,7 @@ func (b *ETCDBindingStorage) watchLeaseChan(c <-chan *clientv3.LeaseKeepAliveRes
 }
 
 func (b *ETCDBindingStorage) bootstrapLease() error {
-	// grab lease
+	// 创建租约 带ttl
 	l, err := b.cli.Grant(context.TODO(), int64(b.leaseTTL.Seconds()))
 	if err != nil {
 		return err
@@ -145,18 +152,21 @@ func (b *ETCDBindingStorage) bootstrapLease() error {
 	logger.Log.Debugf("[binding storage] sd: got leaseID: %x", l.ID)
 	// this will keep alive forever, when channel c is closed
 	// it means we probably have to rebootstrap the lease
+	//keep alive
 	c, err := b.cli.KeepAlive(context.TODO(), b.leaseID)
 	if err != nil {
 		return err
 	}
 	// need to receive here as per etcd docs
 	<-c
+	//监听keep alive的返回
 	go b.watchLeaseChan(c)
 	return nil
 }
 
 // Init starts the binding storage module
 func (b *ETCDBindingStorage) Init() error {
+	//连接etcd
 	var cli *clientv3.Client
 	var err error
 	if b.cli == nil {
@@ -169,13 +179,15 @@ func (b *ETCDBindingStorage) Init() error {
 		}
 		b.cli = cli
 	}
-	// namespaced etcd :)
+	// 创建kv存取
 	b.cli.KV = namespace.NewKV(b.cli.KV, b.etcdPrefix)
+	// 创建租约keepalive
 	err = b.bootstrapLease()
 	if err != nil {
 		return err
 	}
 
+	//如果是前端服务器则维护sessiond的生命周期
 	if b.thisServer.Frontend {
 		b.setupOnSessionCloseCB()
 		b.setupOnAfterSessionBindCB()
