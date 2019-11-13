@@ -86,9 +86,9 @@ type (
 
 	pendingMessage struct {
 		ctx     context.Context
-		typ     message.Type // message type
-		route   string       // message route (push)
-		mid     uint         // response message id (response)
+		typ     message.Type // message type （push response）
+		route   string       // message route (push) 消息路由信息
+		mid     uint         // response message id (response) 消息id （response是存在）
 		payload interface{}  // payload
 		err     bool         // if its an error message
 	}
@@ -136,6 +136,7 @@ func NewAgent(
 	return a
 }
 
+// 发送消息
 func (a *Agent) send(m pendingMessage) (err error) {
 	defer func() {
 		if e := recover(); e != nil {
