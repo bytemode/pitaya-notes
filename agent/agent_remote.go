@@ -39,6 +39,8 @@ import (
 	"github.com/topfreegames/pitaya/util"
 )
 
+//handlersysrpc的时候会创建一个Remote, Remtoe的所有调用都是使用rpc调用到本地session所在的前端服务器
+
 // Remote corresponding to another server
 type Remote struct {
 	Session          *session.Session // session
@@ -54,7 +56,7 @@ type Remote struct {
 
 // NewRemote create new Remote instance
 func NewRemote(
-	sess *protos.Session,
+	sess *protos.Session, //session 即远程调用的时候通过rpc发送过来的本地服务器中的session
 	reply string,
 	rpcClient cluster.RPCClient,
 	encoder codec.PacketEncoder,
@@ -97,6 +99,7 @@ func (a *Remote) Kick(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	//Remote关联的前端服务器进行rpc调用
 	_, err = a.SendRequest(ctx, a.frontendID, constants.KickRoute, b)
 	return err
 }
@@ -227,6 +230,7 @@ func (a *Remote) SendRequest(ctx context.Context, serverID, reqRoute string, v i
 		Route: reqRoute,
 		Data:  payload,
 	}
+	//通过服务发现拿到server 之后进行rpc调用发送消息
 	server, err := a.serviceDiscovery.GetServer(serverID)
 	if err != nil {
 		return nil, err

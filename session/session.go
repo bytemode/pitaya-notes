@@ -90,7 +90,7 @@ type Session struct {
 	encodedData       []byte                 // json.Marshal(s.data)
 	OnCloseCallbacks  []func()               //onClose callbacks
 	IsFrontend        bool                   // 是否前端服务器session
-	frontendID        string                 // the id of the frontend that owns the session
+	frontendID        string                 // 前端服务器的name
 	frontendSessionID int64                  // the id of the session on the frontend server
 	Subscriptions     []*nats.Subscription   // subscription created on bind when using nats rpc server
 }
