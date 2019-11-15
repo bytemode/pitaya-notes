@@ -550,6 +550,7 @@ func Error(err error, code string, metadata ...map[string]string) *errors.Error 
 }
 
 // GetSessionFromCtx retrieves a session from a given context
+// 从ctx的保存的数据中获取session
 func GetSessionFromCtx(ctx context.Context) *session.Session {
 	sessionVal := ctx.Value(constants.SessionCtxKey)
 	if sessionVal == nil {

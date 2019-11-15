@@ -150,6 +150,7 @@ func processHandlerMessage(
 	if ctx == nil {
 		ctx = context.Background()
 	}
+	//在进行反射调用之前在context中添加session数据 在具体响应中可以通过contex获取session进行操作
 	ctx = context.WithValue(ctx, constants.SessionCtxKey, session)
 	ctx = util.CtxWithDefaultLogger(ctx, rt.String(), session.UID())
 
