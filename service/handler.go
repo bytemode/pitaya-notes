@@ -189,7 +189,7 @@ func (h *HandlerService) Handle(conn net.Conn) {
 	// read loop 循环读取网络连接上的消息
 	buf := make([]byte, 2048)
 	for {
-		n, err := conn.Read(buf) //读取数据放入buf返回字节数 超过buf会自动扩容
+		n, err := conn.Read(buf) //读取数据2048字节的数据 此处会有问题 消息不能大于2048负责会出现诸多问题
 		if err != nil {
 			logger.Log.Debugf("Read message error: '%s', session will be closed immediately", err.Error())
 			return
