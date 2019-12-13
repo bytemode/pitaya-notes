@@ -22,6 +22,9 @@ RemoteService
 app启动对每个acceptor上管道上传来的conn HandlerService创建一个agent然后读取数据成成消息写入消息管道,对管道消息进行处理，本地消息则交由本地服务器处理,  
 远程消息则交由remoteService处理.消息中存在servertype如果和本地不同则是remote消息，需要进行一次sys rpc转发调用到符合的service中调用本地方法.         
 
+## 关于RPC
+游戏服务器中往往存在这多用开发语言，grpc对各种语言提供和很好的支持，非常的方便.
+
 ## 存在问题
 1. 消息不能大于2048byte
    推荐同步nano的handler中的接收消息逻辑
