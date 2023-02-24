@@ -69,7 +69,7 @@ require (
 	github.com/ugorji/go v0.0.0-20180112141927-9831f2c3ac10 // indirect
 	github.com/xiang90/probing v0.0.0-20160813154853-07dd2e8dfe18 // indirect
 	go.uber.org/atomic v1.3.2 // indirect
-	golang.org/x/net v0.0.0-20190404232315-eb5bcb51f2a3
+	golang.org/x/net v0.7.0
 	golang.org/x/time v0.0.0-20180314180208-26559e0f760e // indirect
 	google.golang.org/grpc v1.21.0
 	gopkg.in/airbrake/gobrake.v2 v2.0.9 // indirect
