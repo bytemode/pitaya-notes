@@ -24,7 +24,7 @@ require (
 	github.com/gogo/protobuf v1.3.0 // indirect
 	github.com/golang/groupcache v0.0.0-20180203143532-66deaeb636df // indirect
 	github.com/golang/mock v1.1.1
-	github.com/golang/protobuf v1.3.1
+	github.com/golang/protobuf v1.4.2
 	github.com/google/btree v0.0.0-20180124185431-e89373fe6b4a // indirect
 	github.com/google/uuid v1.0.0
 	github.com/gorilla/websocket v1.2.0
@@ -40,8 +40,8 @@ require (
 	github.com/nats-io/gnatsd v1.4.1
 	github.com/nats-io/go-nats v1.4.0 // indirect
 	github.com/nats-io/nats-server v1.4.1
-	github.com/nats-io/nats-server/v2 v2.0.4 // indirect
-	github.com/nats-io/nats.go v1.8.1
+	github.com/nats-io/nats-server/v2 v2.7.4 // indirect
+	github.com/nats-io/nats.go v1.13.1-0.20220308171302-2f2f6968e98d
 	github.com/onsi/ginkgo v1.8.0 // indirect
 	github.com/onsi/gomega v1.5.0 // indirect
 	github.com/opentracing/opentracing-go v1.0.2
@@ -69,8 +69,7 @@ require (
 	github.com/ugorji/go v0.0.0-20180112141927-9831f2c3ac10 // indirect
 	github.com/xiang90/probing v0.0.0-20160813154853-07dd2e8dfe18 // indirect
 	go.uber.org/atomic v1.3.2 // indirect
-	golang.org/x/net v0.0.0-20190404232315-eb5bcb51f2a3
-	golang.org/x/time v0.0.0-20180314180208-26559e0f760e // indirect
+	golang.org/x/net v0.0.0-20211112202133-69e39bad7dc2
 	google.golang.org/grpc v1.21.0
 	gopkg.in/airbrake/gobrake.v2 v2.0.9 // indirect
 	gopkg.in/gemnasium/logrus-airbrake-hook.v2 v2.1.2 // indirect
